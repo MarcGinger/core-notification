@@ -24,7 +24,7 @@ export class HandleSlackMessageFailureHandler
 
   async execute(command: HandleSlackMessageFailureCommand): Promise<void> {
     const { props } = command;
-    
+
     try {
       await this.handleSlackMessageFailureUseCase.execute(props);
     } catch (error) {

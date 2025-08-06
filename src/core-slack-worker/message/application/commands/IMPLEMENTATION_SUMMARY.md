@@ -1,11 +1,13 @@
 # CQRS Command/Handler Pattern Implementation Summary
 
 ## Overview
+
 Successfully implemented the Command/Handler pattern for the Slack Worker message module using NestJS CQRS framework. This provides better separation of concerns and follows CQRS architectural principles.
 
 ## Implemented Commands and Handlers
 
 ### 1. Handle Slack Message Failure
+
 - **Command**: `HandleSlackMessageFailureCommand`
 - **Handler**: `HandleSlackMessageFailureHandler`
 - **Location**: `src/core-slack-worker/message/application/commands/handle-failure/`
@@ -22,6 +24,7 @@ Successfully implemented the Command/Handler pattern for the Slack Worker messag
   ```
 
 ### 2. Queue Slack Message
+
 - **Command**: `QueueSlackMessageCommand`
 - **Handler**: `QueueSlackMessageHandler`
 - **Location**: `src/core-slack-worker/message/application/commands/queue/`
@@ -42,6 +45,7 @@ Successfully implemented the Command/Handler pattern for the Slack Worker messag
   ```
 
 ### 3. Render Message Template
+
 - **Command**: `RenderMessageTemplateCommand`
 - **Handler**: `RenderMessageTemplateHandler`
 - **Location**: `src/core-slack-worker/message/application/commands/render/`
@@ -66,9 +70,9 @@ All command handlers are automatically registered through the `MessageCommands` 
 export const MessageCommands = [
   CreateMessageHandler,
   SendSlackMessageHandler,
-  HandleSlackMessageFailureHandler,  // ✅ New
-  QueueSlackMessageHandler,          // ✅ New
-  RenderMessageTemplateHandler,      // ✅ New
+  HandleSlackMessageFailureHandler, // ✅ New
+  QueueSlackMessageHandler, // ✅ New
+  RenderMessageTemplateHandler, // ✅ New
 ];
 ```
 

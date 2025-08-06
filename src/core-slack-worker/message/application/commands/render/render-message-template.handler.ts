@@ -24,7 +24,7 @@ export class RenderMessageTemplateHandler
 
   async execute(command: RenderMessageTemplateCommand): Promise<string> {
     const { props } = command;
-    
+
     try {
       return await this.renderMessageTemplateUseCase.execute(props);
     } catch (error) {
