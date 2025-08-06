@@ -1,0 +1,39 @@
+services:
+  backend:
+    build: .
+    ports:
+      - 80:8080
+    volumes:
+      - .:/apps
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - KEYCLOAK_URL=${KEYCLOAK_URL}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - KEYCLOAK_CLIENTID=${KEYCLOAK_CLIENTID}
+      - KEYCLOAK_SECRET=${KEYCLOAK_SECRET}
+      - KEYCLOAK_APIM=${KEYCLOAK_APIM}
+      - KEYCLOAK_VERSION=${KEYCLOAK_VERSION}
+      - KEYCLOAK_GRANTTYPE=${KEYCLOAK_GRANTTYPE}
+      - KEYCLOAK_SCOPE=${KEYCLOAK_SCOPE}
+
+      - DATABASE_TYPE=${DATABASE_TYPE}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_NAME=test
+      - DATABASE_SCHEMA=${DATABASE_SCHEMA}
+      - DATABASE_SYNCHRONIZE=${DATABASE_SYNCHRONIZE}
+      - LOGGER_LEVEL=${LOGGER_LEVEL}
+
+      - EVENSTORE_URL=${EVENSTORE_URL}
+
+      - LOGGER_LEVEL=error,warn,info,debug,verbose
+
+      - PORT=8080
+    networks:
+      - gs-network
+
+networks:
+  gs-network:
+    driver: bridge

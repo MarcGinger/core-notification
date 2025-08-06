@@ -1,0 +1,63 @@
+{
+  "service": {
+    "name": "gsnest-microservice-starter",
+    "version": "1",
+    "module": "starter-service",
+    "hasRedis": false,
+    "hasSql": false,
+    "hasEventStream": false
+  },
+  "tables": {
+    "starter": {
+      "store": {
+        "read": "sql,eventstream,redis",
+        "write": "sql,eventstream,redis",
+        "list": "sql,eventstream,redis"
+      },
+      "cancel": {
+        "create": false,
+        "update": false,
+        "delete": false,
+        "batch": false,
+        "get": false
+      },
+      "complete": [],
+      "redis": {
+        "redis": {
+          "category": "lookups:core.starter.v1",
+          "ttl": 3600,
+          "hash": true
+        },
+        "prefix": "starter-service",
+        "aggregate": "starter",
+        "version": "v1"
+      },
+      "eventstream": {
+        "stream": "core.starter.v1",
+        "create-type": "create",
+        "update-type": "update",
+        "boundedContext": "starter-service",
+        "aggregate": "starter",
+        "version": "v1"
+      },
+      "cols": {
+        "code": {},
+        "name": {},
+        "description": {},
+        "active": {}
+      },
+      "docs": {
+        "summary": "This is the Starter module"
+      },
+      "permissions": {
+        "enabled": true,
+        "prefix": ""
+      },
+      "apis": {}
+    }
+  },
+  "excluded": [],
+  "docs": {
+    "summary": "This is the Starter service service"
+  }
+}

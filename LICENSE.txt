@@ -1,0 +1,17 @@
+Copyright (c) 2025 Marc Ginger. All rights reserved.
+
+This software is proprietary and confidential. Unauthorized copying of this file,
+via any medium, is strictly prohibited.
+
+All information contained herein is the sole property of Marc Ginger and may not
+be reproduced, stored in a retrieval system, or transmitted in any form or by
+any means—electronic, mechanical, photocopying, recording, or otherwise—without
+prior written permission.
+
+This software is intended solely for internal use by authorized users. It is not
+licensed for distribution or public release. Any reverse engineering, disassembly,
+or decompilation of the software is strictly prohibited unless explicitly permitted
+by law notwithstanding this limitation.
+
+Marc Ginger retains all intellectual property rights in and to the software,
+including all enhancements, derivatives, and modifications thereof.
