@@ -8,4 +8,4 @@
  * Confidential and proprietary.
  */
 
-export * from './message.entity';
+export * from './processed-event.entity';

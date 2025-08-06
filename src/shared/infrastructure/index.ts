@@ -12,6 +12,7 @@ export * from './azure-storage';
 export * from './bullmq';
 export * from './controllers';
 export * from './database';
+export * from './event-processing';
 export * from './event-store';
 export * from './filters';
 export * from './interceptors';

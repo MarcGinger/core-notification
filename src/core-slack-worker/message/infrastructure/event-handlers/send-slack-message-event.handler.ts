@@ -22,7 +22,7 @@ import { MessageCreatedEvent } from '../../domain/events';
 import { CreateMessageProps } from '../../domain/properties';
 import { SlackMessageJobData } from '../processors/slack-message.processor';
 import { MessageRepository } from '../repositories';
-import { ProcessedEventRepository } from '../repositories/processed-event.repository';
+import { ProcessedEventRepository } from 'src/shared/infrastructure/event-processing';
 import { SlackMessageQueueService } from '../services/slack-message-queue.service';
 
 /**
@@ -94,7 +94,7 @@ export class SendSlackMessageEventHandler {
         const eventTypeStream = '$et-slack.message.created.v1';
 
         const alreadyProcessed =
-          await this.processedEventRepository.isEventProcessed(
+          await this.processedEventRepository.isSlackEventProcessed(
             eventTypeStream,
             meta.revision,
           );
@@ -115,7 +115,7 @@ export class SendSlackMessageEventHandler {
 
         // Mark as processing BEFORE sending Slack message to prevent race conditions
         try {
-          await this.processedEventRepository.markEventAsProcessing(
+          await this.processedEventRepository.markSlackEventAsProcessing(
             eventTypeStream,
             meta.revision,
           );
@@ -145,9 +145,10 @@ export class SendSlackMessageEventHandler {
       if (!this.isMessageCreatedEvent(meta.eventType)) {
         if (meta.revision !== undefined) {
           const eventTypeStream = '$et-slack.message.created.v1';
-          await this.processedEventRepository.markEventAsSkipped(
+          await this.processedEventRepository.markSlackEventAsProcessed(
             eventTypeStream,
             meta.revision,
+            'skipped',
           );
         }
 
@@ -162,9 +163,10 @@ export class SendSlackMessageEventHandler {
       const tenant = meta.tenant || this.extractTenantFromStream(meta.stream);
       if (!tenant) {
         if (meta.revision) {
-          await this.processedEventRepository.markEventAsFailed(
+          await this.processedEventRepository.markSlackEventAsProcessed(
             meta.stream,
             meta.revision,
+            'failed',
           );
         }
 
@@ -211,7 +213,7 @@ export class SendSlackMessageEventHandler {
           // Mark event as processed since we've scheduled it
           if (meta.revision !== undefined) {
             const eventTypeStream = '$et-slack.message.created.v1';
-            await this.processedEventRepository.updateEventStatus(
+            await this.processedEventRepository.updateSlackEventStatus(
               eventTypeStream,
               meta.revision,
               'processed',
@@ -286,7 +288,7 @@ export class SendSlackMessageEventHandler {
           'About to update event status from processing to processed',
         );
         // Update the status from 'processing' to 'processed'
-        await this.processedEventRepository.updateEventStatus(
+        await this.processedEventRepository.updateSlackEventStatus(
           eventTypeStream,
           meta.revision,
           'processed',
@@ -325,7 +327,7 @@ export class SendSlackMessageEventHandler {
       if (meta.revision !== undefined) {
         try {
           const eventTypeStream = '$et-slack.message.created.v1';
-          await this.processedEventRepository.updateEventStatus(
+          await this.processedEventRepository.updateSlackEventStatus(
             eventTypeStream,
             meta.revision,
             'failed',

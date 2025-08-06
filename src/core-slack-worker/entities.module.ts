@@ -11,10 +11,8 @@
 import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import {
-  MessageEntity,
-  ProcessedEventEntity,
-} from './message/infrastructure/entities';
+import { MessageEntity } from './message/infrastructure/entities';
+import { ProcessedEventEntity } from 'src/shared/infrastructure';
 
 @Global()
 @Module({

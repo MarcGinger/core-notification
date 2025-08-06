@@ -11,6 +11,7 @@
 import { Module } from '@nestjs/common';
 import {
   BullMQModule,
+  EventProcessingModule,
   EventStoreSharedModule,
 } from 'src/shared/infrastructure';
 import { LoggerModule } from 'src/shared/logger';
@@ -38,11 +39,16 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { SlackMessageRequestService } from './application/services/slack-message-request.service';
 import { SlackApiAdapter } from './infrastructure/adapters/slack-api.adapter';
 import { SlackMessageProcessor } from './infrastructure/processors';
-import { ProcessedEventRepository } from './infrastructure/repositories/processed-event.repository';
 import { SlackMessageQueueService } from './infrastructure/services/slack-message-queue.service';
 
 @Module({
-  imports: [CqrsModule, EventStoreSharedModule, BullMQModule, LoggerModule],
+  imports: [
+    CqrsModule,
+    EventStoreSharedModule,
+    EventProcessingModule,
+    BullMQModule,
+    LoggerModule,
+  ],
   controllers: [MessageController, SlackMessageRequestController],
   providers: [
     MessageDomainService,
@@ -50,7 +56,7 @@ import { SlackMessageQueueService } from './infrastructure/services/slack-messag
     MessageTemplateDomainService,
     MessageRepository,
     MessageSqlRepository,
-    ProcessedEventRepository,
+    // ProcessedEventRepository is now provided by EventProcessingModule
     MessageApplicationService,
     SlackMessageRequestService,
     SlackMessageQueueService,
@@ -64,10 +70,6 @@ import { SlackMessageQueueService } from './infrastructure/services/slack-messag
 
     // BullMQ Processors
     SlackMessageProcessor,
-
-    // Projections
-    SendSlackMessageEventHandler,
-    SlackMessageEventSubscriptionManager,
 
     // Exception Messages
     {
