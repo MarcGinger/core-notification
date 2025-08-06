@@ -8,12 +8,32 @@
  * Confidential and proprietary.
  */
 
-// generate-commands
+// Command Handlers
 import { CreateMessageHandler } from './create/create-message.handler';
 import { SendSlackMessageHandler } from './send/send-slack-message.handler';
+import { HandleSlackMessageFailureHandler } from './handle-failure/handle-slack-message-failure.handler';
+import { QueueSlackMessageHandler } from './queue/queue-slack-message.handler';
+import { RenderMessageTemplateHandler } from './render/render-message-template.handler';
 
-// application/commands/index.ts
-export const MessageCommands = [CreateMessageHandler, SendSlackMessageHandler];
+// All Message Command Handlers
+export const MessageCommands = [
+  CreateMessageHandler,
+  SendSlackMessageHandler,
+  HandleSlackMessageFailureHandler,
+  QueueSlackMessageHandler,
+  RenderMessageTemplateHandler,
+];
 
+// Export Commands
 export * from './create/create-message.command';
 export * from './send/send-slack-message.command';
+export * from './handle-failure/handle-slack-message-failure.command';
+export * from './queue/queue-slack-message.command';
+export * from './render/render-message-template.command';
+
+// Export Handlers
+export * from './create/create-message.handler';
+export * from './send/send-slack-message.handler';
+export * from './handle-failure/handle-slack-message-failure.handler';
+export * from './queue/queue-slack-message.handler';
+export * from './render/render-message-template.handler';

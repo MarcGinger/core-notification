@@ -1,0 +1,25 @@
+/**
+ * Copyright (c) 2025 Marc Ginger. All rights reserved.
+ *
+ * This file is part of a proprietary NestJS system developed by Marc Ginger.
+ * Unauthorized copying, modification, distribution, or use of this file,
+ * via any medium, is strictly prohibited and may result in legal action.
+ *
+ * Confidential and proprietary.
+ */
+
+/**
+ * Command for rendering message templates with provided payload data
+ */
+export interface RenderMessageTemplateProps {
+  tenant: string;
+  templateCode?: string;
+  payload?: Record<string, any>;
+  channel: string;
+  configCode?: string;
+  correlationId: string;
+}
+
+export class RenderMessageTemplateCommand {
+  constructor(public readonly props: RenderMessageTemplateProps) {}
+}
