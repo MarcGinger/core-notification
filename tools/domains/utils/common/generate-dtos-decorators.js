@@ -261,9 +261,6 @@ async function generateDecoratorsForTable(table, schema, outDir) {
           reqLines.push('  return applyDecorators(');
           reqLines.push('    ApiProperty({');
           reqLines.push(`      description: \`${safeDescription}\`,`);
-          // if (exampleValue) {
-          //   reqLines.push(`      example: ${JSON.stringify(exampleValue)},`);
-          // }
           if (isArray) {
             reqLines.push(`      type: () => ${relatedType},`);
           } else if (isRecord) {
@@ -338,9 +335,7 @@ async function generateDecoratorsForTable(table, schema, outDir) {
         reqLines.push('  return applyDecorators(');
         reqLines.push('    ApiProperty({');
         reqLines.push(`      description: \`${safeDescription}\`,`);
-        if (exampleValue) {
-          reqLines.push(`      example: [${JSON.stringify(exampleValue)}],`);
-        }
+
         // Use number[] for INT/DECIMAL/BIGINT/FLOAT/REAL/DOUBLE, string[] for others
         let typeVal = 'String';
         let validator = 'IsString()';
@@ -422,9 +417,7 @@ async function generateDecoratorsForTable(table, schema, outDir) {
       reqLines.push('  return applyDecorators(');
       reqLines.push(`    ApiProperty({`);
       reqLines.push(`      description: \`${safeDescription}\`,`);
-      if (exampleValue) {
-        reqLines.push(`      example: ${JSON.stringify(exampleValue)},`);
-      }
+
       reqLines.push(`      type: ${typeVal},`);
       reqLines.push('      required,');
       reqLines.push('    }),');
@@ -489,6 +482,10 @@ async function generateDecoratorsForTable(table, schema, outDir) {
     let apiFormat = undefined;
     let apiEnum = undefined;
     let maxLength = undefined;
+    let minLength = undefined;
+    let maximum = undefined;
+    let minimum = undefined;
+    let pattern = undefined;
     let description = col.comment || '';
     let isEnum = false;
     let enumType = undefined;
@@ -532,7 +529,7 @@ async function generateDecoratorsForTable(table, schema, outDir) {
         usedTransformers.add('Type');
       }
     }
-
+    let apiPropOpts = [`description: \`${safeDescription}\``];
     switch ((col.datatype || '').toUpperCase()) {
       case 'INT':
       case 'DECIMAL':
@@ -544,8 +541,25 @@ async function generateDecoratorsForTable(table, schema, outDir) {
         validators.push('IsNumber()');
         usedValidators.add('IsNumber');
         apiType = 'Number';
+        if (col.param && !isObject && !isArray) {
+          if (exampleValue) {
+            apiPropOpts.push(`example: ${exampleValue}`);
+          }
+          maximum = Number(col.param);
+          validators.push(`Max(${col.param})`);
+          usedValidators.add('Max');
+          apiPropOpts.push(`maximum: ${maximum}`);
+        }
+        if (schema.parameters[table.name]?.cols[col.name]?.min) {
+          minimum = Number(schema.parameters[table.name].cols[col.name].min);
+          validators.push(`Min(${minimum})`);
+          apiPropOpts.push(`minimum: ${minimum}`);
+        }
         break;
       case 'BOOLEAN':
+        if (exampleValue) {
+          apiPropOpts.push(`example: ${exampleValue}`);
+        }
         tsType = 'boolean';
         validators.push('IsBoolean()');
         usedValidators.add('IsBoolean');
@@ -554,6 +568,9 @@ async function generateDecoratorsForTable(table, schema, outDir) {
       case 'DATE':
       case 'DATETIME':
       case 'TIMESTAMP':
+        if (exampleValue) {
+          apiPropOpts.push(`example: ${JSON.stringify(exampleValue)}`);
+        }
         tsType = 'Date';
         apiType = 'String';
         apiFormat = 'date-time';
@@ -563,6 +580,9 @@ async function generateDecoratorsForTable(table, schema, outDir) {
         enumType = className + upperFirst(camelCase(col.name)) + 'Enum';
 
         if (enumType) {
+          if (exampleValue) {
+            apiPropOpts.push(`example: ${JSON.stringify(exampleValue)}`);
+          }
           apiEnum = enumType;
           validators.push(`IsEnum(${enumType})`);
           usedValidators.add('IsEnum');
@@ -573,12 +593,20 @@ async function generateDecoratorsForTable(table, schema, outDir) {
         break;
       case 'JSON':
       case 'JSONB':
+        if (exampleValue) {
+          apiPropOpts.push(`example: ${JSON.stringify(exampleValue)}`);
+        }
         tsType = 'Record<string, any>';
         isObject = true;
         validators.push('IsObject()');
         usedValidators.add('IsObject');
         break;
       default:
+        if (exampleValue) {
+          if (!(isRelation && apiTypeExpr)) {
+            apiPropOpts.push(`example: ${JSON.stringify(exampleValue)}`);
+          }
+        }
         tsType = 'string';
         validators.push('IsString()');
         usedValidators.add('IsString');
@@ -588,7 +616,20 @@ async function generateDecoratorsForTable(table, schema, outDir) {
           validators.push(`MaxLength(${col.param})`);
           usedValidators.add('MaxLength');
         }
+        if (schema.parameters[table.name]?.cols[col.name]?.pattern) {
+          pattern = schema.parameters[table.name].cols[col.name].pattern;
+          // Escape single quotes in patternMessage to avoid breaking the string
+          const patternMessage = (
+            schema.parameters[table.name].cols[col.name].patternMessage ||
+            'Invalid format'
+          ).replace(/'/g, "\\'");
+          validators.push(
+            `Matches(/${pattern}/, { message: '${patternMessage}' })`,
+          );
+          usedValidators.add('Matches');
+        }
     }
+
     // ...existing code...
 
     // Decorator function signature
@@ -597,11 +638,11 @@ async function generateDecoratorsForTable(table, schema, outDir) {
     if (required) propOptionsNeeded = true;
 
     // ApiProperty options
-    let apiPropOpts = [`description: \`${safeDescription}\``];
-    if (exampleValue) {
-      if (!(isRelation && apiTypeExpr)) {
-        apiPropOpts.push(`example: ${JSON.stringify(exampleValue)}`);
-      }
+
+    if (schema.parameters[table.name]?.cols[col.name]?.pattern) {
+      apiPropOpts.push(
+        `pattern: ${JSON.stringify(schema.parameters[table.name].cols[col.name].pattern)}`,
+      );
     }
     if (isRelation && apiTypeExpr) {
       apiPropOpts.push(`type: ${apiTypeExpr}`);

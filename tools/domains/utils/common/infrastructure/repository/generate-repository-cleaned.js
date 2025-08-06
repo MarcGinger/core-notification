@@ -164,6 +164,11 @@ const setupRepositoryDependencies = (
     );
     lines.push('');
   }
+  if (hasRedis) {
+    lines.push(`  private readonly redisProjectionKey =
+    ${className}ProjectionKeys.getRedisProjectionKey();
+`);
+  }
 };
 
 /**
@@ -219,7 +224,16 @@ const setupConstructorDependencies = (
       '    private readonly mongoUtilityService: MongoUtilityService,',
     );
   }
-
+  if (hasRedis) {
+    addImport(
+      imports,
+      'src/shared/infrastructure/redis',
+      'RedisUtilityService',
+    );
+    lines.push(
+      `    private readonly redisUtilityService: RedisUtilityService,`,
+    );
+  }
   if (hasSql) {
     addImport(imports, 'typeorm', ['DataSource']);
     lines.push('    protected readonly dataSource: DataSource,');

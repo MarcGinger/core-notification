@@ -381,7 +381,7 @@ export class CheckPointEntity {
       logger.info(`Found ${table.cols.length} columns to process`);
 
       const lines = [];
-
+      imports['typeorm'].add('PrimaryColumn');
       lines.push(
         `  @PrimaryColumn({ name: 'tenant_id', type: 'varchar', length: 60 })`,
       );
@@ -605,9 +605,25 @@ export class CheckPointEntity {
                   logger.info(
                     `Parent table ${rel.parentTable} not in entity list, using standard column`,
                   );
-                  lines.push(
-                    `  @Column({ ${enitityColumnList(table, col).join(', ')} })`,
-                  );
+                  switch (camelCase(col.name)) {
+                    case 'createdAt':
+                      addImport(imports, 'typeorm', 'CreateDateColumn');
+                      lines.push(
+                        `  @CreateDateColumn({ name: '${snakeCase(col.name)}', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })`,
+                      );
+                      break;
+                    case 'updatedAt':
+                      addImport(imports, 'typeorm', 'UpdateDateColumn');
+                      lines.push(
+                        `  @UpdateDateColumn({ name: '${snakeCase(col.name)}', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })`,
+                      );
+                      break;
+                    default:
+                      lines.push(
+                        `  @Column({ ${enitityColumnList(table, col).join(', ')} })`,
+                      );
+                      break;
+                  }
                   lines.push(
                     `  ${camelCase(col.name)}${col.nn ? '' : '?'}: ${col.type};`,
                   );
@@ -665,9 +681,25 @@ export class CheckPointEntity {
                 lines.push(``);
               } else {
                 logger.info(`Processing regular column ${col.name}`);
-                lines.push(
-                  `  @Column({ ${enitityColumnList(table, col).join(', ')} })`,
-                );
+                switch (camelCase(col.name)) {
+                  case 'createdAt':
+                    addImport(imports, 'typeorm', 'CreateDateColumn');
+                    lines.push(
+                      `  @CreateDateColumn({ name: '${snakeCase(col.name)}', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })`,
+                    );
+                    break;
+                  case 'updatedAt':
+                    addImport(imports, 'typeorm', 'UpdateDateColumn');
+                    lines.push(
+                      `  @UpdateDateColumn({ name: '${snakeCase(col.name)}', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })`,
+                    );
+                    break;
+                  default:
+                    lines.push(
+                      `  @Column({ ${enitityColumnList(table, col).join(', ')} })`,
+                    );
+                    break;
+                }
                 if (col.datatype === 'JSON' && col.enum) {
                   lines.push(
                     `  ${camelCase(col.name)}${col.nn ? '' : '?'}: ${tsType}[];`,
@@ -797,6 +829,7 @@ const ormConfigModule = async (schema) => {
 function enitityColumnList(table, col) {
   const nullable = col.nn ? 'false' : 'true';
   let length = 0;
+  let defaultValue = col.defaultvalue;
   let type = dataType(col.datatype);
 
   switch (type) {
@@ -823,6 +856,13 @@ function enitityColumnList(table, col) {
   const opts = [`name: '${col.name.toLowerCase()}'`, `type: '${type}'`];
 
   if (length) opts.push(`length: ${length}`);
+  if (defaultValue) {
+    if (col.type === 'string') {
+      opts.push(`default: '${defaultValue.replace(/'/g, "\\'")}'`);
+    } else {
+      opts.push(`default: ${defaultValue}`);
+    }
+  }
   opts.push(`nullable: ${nullable}`);
   const enumName = table._enums;
   if (enumName[col.name]) opts.push(`enum: ${enumName[col.name].name}`);

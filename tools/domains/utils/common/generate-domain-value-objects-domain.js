@@ -61,13 +61,13 @@ const generateValueObjectUtilities = async (schema, config) => {
   const outDir = path.resolve(schema.sourceDirectory);
   const tables = schema.tables;
   for (const [tableId, table] of Object.entries(tables)) {
-    if (
-      schema.parameters?.[table.name]?.cancel?.create &&
-      schema.parameters?.[table.name]?.cancel?.update &&
-      schema.parameters?.[table.name]?.cancel?.delete
-    ) {
-      continue;
-    }
+    // if (
+    //   schema.parameters?.[table.name]?.cancel?.create &&
+    //   schema.parameters?.[table.name]?.cancel?.update &&
+    //   schema.parameters?.[table.name]?.cancel?.delete
+    // ) {
+    //   continue;
+    // }
     errors[table.name] = {};
     let hasRecordSet = false;
     let hasArray = false;

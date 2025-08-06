@@ -1,8 +1,8 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DomainEvent, serializeDomainEvent } from 'src/shared/domain';
 import { ILogger } from 'src/shared/logger';
 import { EsdbEventStore } from './esdb-event-store';
-import { IEventStoreMeta } from './event-store.model';
+import { EventStoreMetaProps } from './event-store.model';
 
 @Injectable()
 export class EventOrchestrationService {
@@ -52,7 +52,7 @@ export class EventOrchestrationService {
 
   async setupProjection<T>(
     stream: string,
-    handler: (event: T, meta: IEventStoreMeta) => void,
+    handler: (event: T, meta: EventStoreMetaProps) => void,
   ): Promise<void> {
     const revision = await this.esdb.catchupStream(stream, {
       onEvent: handler,

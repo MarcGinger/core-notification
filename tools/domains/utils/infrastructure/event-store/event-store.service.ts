@@ -1,11 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { Inject } from '@nestjs/common';
-import { ILogger } from 'src/shared/logger';
-import { IEventStoreMeta } from './event-store.model';
+import { Inject, Injectable } from '@nestjs/common';
 import { DomainEvent } from 'src/shared/domain/events/domain-event.base';
 import { serializeDomainEvent } from 'src/shared/domain/events/serialized-event.helper';
-import { LinkStoreProjection } from './projections';
+import { ILogger } from 'src/shared/logger';
 import { EsdbEventStore } from './esdb-event-store';
+import { EventStoreMetaProps } from './event-store.model';
+import { LinkStoreProjection } from './projections';
 
 /**
  * EventStoreService - EventStoreDB Infrastructure Service
@@ -452,7 +451,7 @@ export class EventStoreService {
    */
   protected async setupList<T>(
     streamName: string,
-    eventHandler: (evt: T, meta: IEventStoreMeta) => void,
+    eventHandler: (evt: T, meta: EventStoreMetaProps) => void,
   ): Promise<void> {
     const MAX_RETRIES = 3;
     let attempt = 0;

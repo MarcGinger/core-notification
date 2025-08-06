@@ -22,9 +22,9 @@ export interface IEventStore<T = any> {
 
 export interface StoreSubscriptionOptions<T> {
   fromSequence?: bigint;
-  onEvent: (evt: T, meta: IEventStoreMeta) => void;
+  onEvent: (evt: T, meta: EventStoreMetaProps) => void;
 }
-export interface IEventStoreMeta {
+export interface EventStoreMetaProps {
   stream: string;
   tenant: string;
   key: string;

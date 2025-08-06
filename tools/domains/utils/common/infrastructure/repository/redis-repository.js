@@ -16,8 +16,7 @@ const {
 } = require('./repository-utils');
 
 // Helper function to generate Redis key constant
-const getRedisKey = (schema, table, className) =>
-  `REDIS_${snakeCase(className).toUpperCase()}_KEY`;
+const getRedisKey = (schema, table, className) => `redisProjectionKey`;
 
 function redisRepositoryGet(schema, table) {
   const moduleName = upperFirst(camelCase(schema.service.module));

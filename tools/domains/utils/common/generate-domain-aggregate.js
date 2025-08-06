@@ -1259,11 +1259,11 @@ const create = async (schema) => {
     // Apply removals first, then additions
     // Each operation will validate business rules individually
     if (operations.remove) {
-      operations.remove.forEach((code) => this.remove${entityName}(user, code));
+      operations.remove.forEach((code) => this.remove${upperFirst(camelCase(singularize(col.name)))}(user, code));
     }
 
     if (operations.add) {
-      operations.add.forEach((code) => this.add${entityName}(user, code));
+      operations.add.forEach((code) => this.add${upperFirst(camelCase(singularize(col.name)))}(user, code));
     }
   }
 `);

@@ -224,11 +224,13 @@ const generateCreateUseCases = async (schema) => {
         const key =
           obj.rel.c_p === 'many' && obj.rel.c_ch === 'many' ? 'codes' : 'code';
         let func = `get${upperFirst(camelCase(singularize(obj.rel.parentClass)))}`;
+        let getFunction = `get${upperFirst(camelCase(singularize(obj.col.name)))}`;
         if (obj.rel.c_p === 'many' && obj.rel.c_ch === 'many') {
           func = `get${upperFirst(camelCase(pluralize(obj.rel.parentClass)))}`;
+          getFunction = `get${upperFirst(camelCase(pluralize(obj.col.name)))}`;
         }
         createUseCaseClass.push(
-          `        ${func}: (user, ${key}) => this.repository.${func}(user, ${key}),`,
+          `        ${getFunction}: (user, ${key}) => this.repository.${func}(user, ${key}),`,
         );
       });
 
@@ -1146,7 +1148,7 @@ const generateRelationshipArrayUseCases = async (schema) => {
               `      }`,
               ``,
               `      // Fetch the related ${camelCase(singularize(relation.childCol))} entity`,
-              `      const ${camelCase(singularize(relation.childCol))} = await this.repository.get${relName}(user, ${childKey});`,
+              `      const ${camelCase(singularize(relation.childCol))} = await this.repository.get${upperFirst(camelCase(relation.parentTable))}(user, ${childKey});`,
               `      if (!${camelCase(singularize(relation.childCol))}) {`,
               `        LoggingErrorHelper.logWarning(`,
               `          this.logger,`,
@@ -1431,7 +1433,7 @@ const generateRelationshipObjectUseCases = async (schema) => {
               `      if (!aggregate) {`,
               `        throw new NotFoundException(${exceptionMsgName}.notFound);`,
               `      }`,
-              `      const related = await this.repository.get${relName}(user, relId);`,
+              `      const related = await this.repository.get${upperFirst(camelCase(relation.parentTable))}(user, relId);`,
               `      if (!related) {`,
               `        throw new BadRequestException(${className}ExceptionMessage.${camelCase(relation.childCol)}NotFound);`,
               `      }`,

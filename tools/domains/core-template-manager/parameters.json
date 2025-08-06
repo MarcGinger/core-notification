@@ -1,0 +1,68 @@
+{
+  "service": {
+    "name": "core slack management",
+    "version": "1",
+    "module": "core-template-manager",
+    "hasRedis": true,
+    "boundedContext": "slack",
+    "hasSql": false,
+    "hasEventStream": true
+  },
+  "tables": {
+    "template": {
+      "docs": {
+        "summary": "This is the Template module"
+      },
+      "permissions": {
+        "enabled": true,
+        "prefix": ""
+      },
+      "apis": {},
+      "store": {
+        "read": "eventstream",
+        "write": "eventstream",
+        "list": "redis"
+      },
+      "cancel": {
+        "create": false,
+        "update": false,
+        "delete": true,
+        "batch": false,
+        "get": false
+      },
+      "complete": [],
+      "redis": {
+        "category": "lookups:core.config.v1",
+        "ttl": 3600,
+        "hash": true,
+        "prefix": "core-slack",
+        "aggregate": "config",
+        "version": "v1"
+      },
+      "eventstream": {
+        "stream": "core.config.v1",
+        "create-type": "create.v1",
+        "update-type": "update.v1",
+        "boundedContext": "core-slack",
+        "aggregate": "template",
+        "version": "v1"
+      },
+      "cols": {
+        "code": {},
+        "name": {},
+        "description": {},
+        "active": {},
+        "version": {},
+        "transport": {},
+        "use_case": {},
+        "content": {},
+        "payload_schema": {},
+        "content_url": {}
+      }
+    }
+  },
+  "excluded": [],
+  "docs": {
+    "summary": "This is the core slack messaging service"
+  }
+}

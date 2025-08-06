@@ -17,8 +17,16 @@ const fs = require('fs-extra');
 const path = require('path');
 
 async function main() {
+  const schemaName = process.argv[2];
+  if (!schemaName) {
+    console.error('❌ Error: Schema name is required');
+    console.log('📖 Usage: node build.js <schema-name>');
+    console.log('📝 Example: node build.js bank-product');
+    process.exit(1);
+  }
+
   // 1) Load the schema
-  const schemaPath = path.resolve(__dirname, 'schema.dmm');
+  const schemaPath = path.resolve(__dirname, schemaName, 'schema.dmm');
   const schema = await fs.readJson(schemaPath);
 
   const fieldsPath = path.resolve(__dirname, 'fields.json');
@@ -56,8 +64,7 @@ async function main() {
   // 2) Walk all tables & columns
 
   // // 3) Write out fields.json
-  const outPath = path.resolve(__dirname, 'schema.dmm');
-  await fs.writeJson(outPath, schema, { spaces: 2 });
+  await fs.writeJson(schemaPath, schema, { spaces: 2 });
 }
 
 main().catch((err) => {

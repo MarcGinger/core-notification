@@ -6,6 +6,7 @@ const {
   deleteDirectory,
   copyDirectory,
   createIndexFilesFromDirectory,
+  deleteFileWithDir,
 } = require('./utils/utils/file-utils');
 const {
   buildImportLines,
@@ -81,9 +82,11 @@ async function setupMonolith() {
   boundedContext = Object.entries(boundedContext).reduce(
     (acc, [key, params]) => {
       const { service, docs } = params;
+
       if (!service) return acc;
 
       const { boundedContext } = service;
+      console.log(service);
       if (!boundedContext) return acc;
 
       if (!acc[boundedContext]) {
@@ -92,7 +95,6 @@ async function setupMonolith() {
           services: [],
         };
       }
-
       acc[boundedContext].services.push({
         name: service.name,
         version: service.version,
@@ -108,7 +110,7 @@ async function setupMonolith() {
     },
     {},
   );
-
+  console.log(boundedContext);
   // Sort boundedContexts by name, and services by module
   boundedContext = Object.keys(boundedContext)
     .sort()
@@ -131,7 +133,6 @@ async function setupMonolith() {
       hasSql,
     },
   };
-
   Promise.all([
     await swaggerUtils(globalParameters, sourceDirectory),
     await swaggerModel(globalParameters, sourceDirectory),
@@ -729,7 +730,9 @@ async function copyInfrastructureFiles(globalParameters, sourceDirectory) {
       path.resolve(sourceDirectory, 'shared', 'infrastructure', 'database'),
     );
   }
-
+  await deleteFileWithDir(
+    path.resolve(sourceDirectory, 'shared', 'infrastructure', 'index.ts'),
+  );
   await createIndexFilesFromDirectory(
     path.resolve(sourceDirectory, 'shared', 'infrastructure'),
   );

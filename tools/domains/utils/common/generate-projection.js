@@ -95,7 +95,6 @@ const esdbMemoryProjection = async (schema) => {
       )
       .filter(({ col }) => col)
       .map(({ col, idx }) => ({ ...col, idx }));
-
     let hasProjector = false;
     if (
       schema.parameters?.[table.name]?.store?.read === 'eventstream' &&
@@ -104,11 +103,7 @@ const esdbMemoryProjection = async (schema) => {
       hasProjector = true;
     }
 
-    // DOTO this is a mistake just to test
-    if (
-      schema.parameters?.[table.name]?.store?.read === 'redis' &&
-      idxCols.length
-    ) {
+    if (schema.parameters?.[table.name]?.store?.read === 'eventstream') {
       hasProjector = true;
     }
 
@@ -122,7 +117,7 @@ const esdbMemoryProjection = async (schema) => {
     addImport(imports, 'src/shared/logger', ['ILogger']);
     addImport(imports, '../../domain/properties', `Snapshot${className}Props`);
     addImport(imports, 'src/shared/infrastructure/event-store', [
-      'IEventStoreMeta',
+      'EventStoreMetaProps',
     ]);
 
     lines = [];
@@ -148,7 +143,7 @@ export class ${className}MemoryProjection {
    * Handle ${camelCase(className)} events for the internal ${camelCase(className)} memory projection
    * Simplified since each event contains the complete aggregate state
    */
-  async handle${className}Event(evt: Snapshot${className}Props, meta: IEventStoreMeta): Promise<void> {
+  async handle${className}Event(evt: Snapshot${className}Props, meta: EventStoreMetaProps): Promise<void> {
     try {
       // Ensure tenant store exists
       if (!this.${camelCase(className)}Store[meta.tenant]) {
@@ -174,7 +169,7 @@ export class ${className}MemoryProjection {
         {
           tenant: meta.tenant,
           ${camelCase(className)}Code: ${camelCase(className)}Data.${camelCase(key.name)},
-          eventType: meta.type,
+          eventType: meta.eventType,
           streamName: meta.stream,
           version: meta.version,
         },
@@ -198,7 +193,7 @@ export class ${className}MemoryProjection {
    */
   private extract${className}FromEvent(
     evt: Snapshot${className}Props,
-    meta: IEventStoreMeta,
+    meta: EventStoreMetaProps,
   ): Snapshot${className}Props | null {
     try {
       // Since each event contains the complete aggregate state,
@@ -467,7 +462,7 @@ const esdbRedisProjection = async (schema) => {
     addImport(imports, 'src/shared/logger', ['ILogger']);
     addImport(imports, 'src/shared/auth', ['IUserToken']);
     addImport(imports, 'src/shared/infrastructure/event-store', [
-      'IEventStoreMeta',
+      'EventStoreMetaProps',
     ]);
     addImport(imports, 'src/shared/infrastructure/redis', [
       'RedisUtilityService',
@@ -734,7 +729,7 @@ export class ${className}RedisProjection {
    */
   async handle${className}Event(
     evt: Snapshot${className}Props,
-    meta: IEventStoreMeta,
+    meta: EventStoreMetaProps,
   ): Promise<void> {
     try {
       // Extract tenant from stream metadata or use default
@@ -755,7 +750,7 @@ export class ${className}RedisProjection {
       };
 
       // Handle different event types
-      if (this.isDeleteEvent(meta.type)) {
+      if (this.isDeleteEvent(meta.eventType)) {
         await this.handle${className}Delete(evt, tenantUser, meta);
       } else {
         await this.handle${className}Upsert(evt, tenantUser, meta);
@@ -765,7 +760,7 @@ export class ${className}RedisProjection {
         {
           tenant,
           ${camelCase(className)}Code: evt.${camelCase(key.name)},
-          eventType: meta.type,
+          eventType: meta.eventType,
           streamName: meta.stream,
           version: meta.version,
         },
@@ -790,7 +785,7 @@ export class ${className}RedisProjection {
   private async handle${className}Upsert(
     evt: Snapshot${className}Props,
     user: IUserToken,
-    meta: IEventStoreMeta,
+    meta: EventStoreMetaProps,
   ): Promise<void> {
     try {
       // Convert event data to Redis format (same as Snapshot${className}Props)
@@ -813,7 +808,7 @@ export class ${className}RedisProjection {
         {
           tenant: user.tenant,
           ${camelCase(className)}Code: evt.${camelCase(key.name)},
-          eventType: meta.type,
+          eventType: meta.eventType,
         },
         '${className} upserted in Redis projection',
       );
@@ -837,7 +832,7 @@ export class ${className}RedisProjection {
   private async handle${className}Delete(
     evt: Snapshot${className}Props,
     user: IUserToken,
-    meta: IEventStoreMeta,
+    meta: EventStoreMetaProps,
   ): Promise<void> {
     try {
       // Check if ${camelCase(className)} exists before deletion
@@ -858,7 +853,7 @@ export class ${className}RedisProjection {
           {
             tenant: user.tenant,
             ${camelCase(className)}Code: evt.${camelCase(key.name)},
-            eventType: meta.type,
+            eventType: meta.eventType,
           },
           '${className} deleted from Redis projection',
         );
@@ -867,7 +862,7 @@ export class ${className}RedisProjection {
           {
             tenant: user.tenant,
             ${camelCase(className)}Code: evt.${camelCase(key.name)},
-            eventType: meta.type,
+            eventType: meta.eventType,
           },
           '${className} not found in Redis for deletion',
         );
@@ -1140,14 +1135,6 @@ const esdbSqlProjection = async (schema) => {
       hasProjector = true;
     }
 
-    // DOTO this is a mistake just to test
-    if (
-      schema.parameters?.[table.name]?.store?.read === 'redis' &&
-      idxCols.length
-    ) {
-      hasProjector = true;
-    }
-
     if (!hasProjector) {
       logger.warn(`Skipping table ${tableId} due to no projector.`);
       continue;
@@ -1158,7 +1145,7 @@ const esdbSqlProjection = async (schema) => {
     addImport(imports, 'src/shared/logger', ['ILogger']);
     addImport(imports, 'src/shared/auth', ['IUserToken']);
     addImport(imports, 'src/shared/infrastructure/event-store', [
-      'IEventStoreMeta',
+      'EventStoreMetaProps',
     ]);
     addImport(imports, '@nestjs/typeorm', ['InjectRepository']);
     addImport(imports, 'typeorm', ['Repository', 'Like', 'In']);
@@ -1407,7 +1394,7 @@ export class ${className}SqlProjection {
    */
   async handle${className}Event(
     evt: Snapshot${className}Props,
-    meta: IEventStoreMeta,
+    meta: EventStoreMetaProps,
   ): Promise<void> {
     try {
       // Extract tenant from stream metadata or use default
@@ -1428,7 +1415,7 @@ export class ${className}SqlProjection {
       };
 
       // Handle different event types
-      if (this.isDeleteEvent(meta.type)) {
+      if (this.isDeleteEvent(meta.eventType)) {
         await this.handle${className}Delete(evt, tenantUser, meta);
       } else {
         await this.handle${className}Upsert(evt, tenantUser, meta);
@@ -1438,7 +1425,7 @@ export class ${className}SqlProjection {
         {
           tenant,
           ${camelCase(className)}Code: evt.${camelCase(key.name)},
-          eventType: meta.type,
+          eventType: meta.eventType,
           streamName: meta.stream,
           version: meta.version,
         },
@@ -1463,7 +1450,7 @@ export class ${className}SqlProjection {
   private async handle${className}Upsert(
     evt: Snapshot${className}Props,
     user: IUserToken,
-    meta: IEventStoreMeta,
+    meta: EventStoreMetaProps,
   ): Promise<void> {
     try {
       // Convert event data to entity format
@@ -1476,7 +1463,7 @@ export class ${className}SqlProjection {
         {
           tenant: user.tenant,
           ${camelCase(className)}Code: evt.${camelCase(key.name)},
-          eventType: meta.type,
+          eventType: meta.eventType,
         },
         '${className} upserted in SQL projection',
       );
@@ -1500,7 +1487,7 @@ export class ${className}SqlProjection {
   private async handle${className}Delete(
     evt: Snapshot${className}Props,
     user: IUserToken,
-    meta: IEventStoreMeta,
+    meta: EventStoreMetaProps,
   ): Promise<void> {
     try {
       // Delete from SQL database
@@ -1514,7 +1501,7 @@ export class ${className}SqlProjection {
           {
             tenant: user.tenant,
             ${camelCase(className)}Code: evt.${camelCase(key.name)},
-            eventType: meta.type,
+            eventType: meta.eventType,
           },
           '${className} deleted from SQL projection',
         );
@@ -1523,7 +1510,7 @@ export class ${className}SqlProjection {
           {
             tenant: user.tenant,
             ${camelCase(className)}Code: evt.${camelCase(key.name)},
-            eventType: meta.type,
+            eventType: meta.eventType,
           },
           '${className} not found in SQL for deletion',
         );
@@ -1766,7 +1753,7 @@ const esdbProjectionManager = async (schema) => {
     addImport(imports, 'rxjs', `Subscription`);
     addImport(imports, 'src/shared/infrastructure/event-store', [
       'EventOrchestrationService',
-      'IEventStoreMeta',
+      'EventStoreMetaProps',
     ]);
 
     addImport(imports, '../../../shared/domain/value-objects', [
@@ -1926,7 +1913,7 @@ export class ${className}ProjectionManager
       // Set up the projection with event handler
       await this.eventOrchestration.setupProjection(
         streamPattern,
-        (event: Snapshot${className}Props, meta: IEventStoreMeta) => {
+        (event: Snapshot${className}Props, meta: EventStoreMetaProps) => {
           void this.handle${className}Event(event, meta);
         },
       );
@@ -2010,7 +1997,7 @@ export class ${className}ProjectionManager
    */
   private async handle${className}Event(
     event: Snapshot${className}Props,
-    meta: IEventStoreMeta,
+    meta: EventStoreMetaProps,
   ): Promise<void> {
     try {
       // Filter for ${camelCase(className)}-related events only

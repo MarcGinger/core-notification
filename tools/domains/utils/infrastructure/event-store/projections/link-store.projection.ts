@@ -1,7 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ILogger } from 'src/shared/logger';
-import { IEventStoreMeta } from '../event-store.model';
+import { EventStoreMetaProps } from '../event-store.model';
 
 /**
  * Represents a linked stream entity with strong typing for event stream operations.
@@ -49,7 +48,7 @@ export class LinkStoreProjection {
   /**
    * Handle link events for the internal link store projection
    */
-  handleLinkEvent(evt: ILinkStore, meta: IEventStoreMeta): void {
+  handleLinkEvent(evt: ILinkStore, meta: EventStoreMetaProps): void {
     try {
       // Ensure tenant store exists
       if (!this.linkStore[meta.tenant]) {
@@ -63,7 +62,7 @@ export class LinkStoreProjection {
         {
           tenant: meta.tenant,
           key: meta.key,
-          eventType: meta.type,
+          eventType: meta.eventType,
           linkId: evt.id,
           streamName: evt.streamName,
         },

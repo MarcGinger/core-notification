@@ -1,0 +1,412 @@
+{
+  "tables": {
+    "62498fe2-f963-485a-ba03-e0886cd8f8c5": {
+      "id": "62498fe2-f963-485a-ba03-e0886cd8f8c5",
+      "visible": true,
+      "name": "starter",
+      "desc": "",
+      "estimatedSize": "",
+      "cols": [
+        {
+          "id": "57feda74-6175-472a-b0c0-92cccce780df",
+          "name": "code",
+          "datatype": "VARCHAR",
+          "param": "20",
+          "pk": true,
+          "nn": true,
+          "fk": false,
+          "comment": "",
+          "defaultvalue": "",
+          "data": "",
+          "after": "",
+          "autoinc": false,
+          "collation": "",
+          "charset": "",
+          "binary": false,
+          "zerofill": false,
+          "unsigned": false,
+          "enum": "",
+          "estimatedSize": "",
+          "type": "string"
+        },
+        {
+          "id": "245ee1cc-d69e-4de5-8173-bfe56e39a8d6",
+          "name": "name",
+          "datatype": "VARCHAR",
+          "param": "60",
+          "pk": false,
+          "nn": true,
+          "fk": false,
+          "comment": "",
+          "defaultvalue": "",
+          "data": "",
+          "after": "",
+          "autoinc": false,
+          "collation": "",
+          "charset": "",
+          "binary": false,
+          "zerofill": false,
+          "unsigned": false,
+          "enum": "",
+          "estimatedSize": "",
+          "type": "string"
+        },
+        {
+          "id": "d20fb403-4c46-4c76-aeac-8d2d0588c525",
+          "name": "description",
+          "datatype": "VARCHAR",
+          "param": "255",
+          "pk": false,
+          "nn": false,
+          "fk": false,
+          "comment": "",
+          "defaultvalue": "",
+          "data": "",
+          "after": "",
+          "autoinc": false,
+          "collation": "",
+          "charset": "",
+          "binary": false,
+          "zerofill": false,
+          "unsigned": false,
+          "enum": "",
+          "estimatedSize": "",
+          "type": "string"
+        },
+        {
+          "id": "84b39ddc-596e-4edd-ac72-bb1bd1ecf2b5",
+          "name": "active",
+          "datatype": "BOOLEAN",
+          "param": "",
+          "pk": false,
+          "nn": false,
+          "fk": false,
+          "comment": "",
+          "defaultvalue": "",
+          "data": "",
+          "after": "",
+          "autoinc": false,
+          "collation": "",
+          "charset": "",
+          "binary": false,
+          "zerofill": false,
+          "unsigned": false,
+          "enum": "",
+          "estimatedSize": "",
+          "type": "boolean"
+        }
+      ],
+      "relations": [],
+      "lines": [],
+      "keys": [
+        {
+          "id": "d31c88ea-bd5d-40c1-9a5b-b8f2fa6a6ab5",
+          "name": "PRIMARY",
+          "isPk": true,
+          "cols": [
+            {
+              "id": "17025115-e5a9-4d95-914c-2688db00f9e9",
+              "colid": "57feda74-6175-472a-b0c0-92cccce780df"
+            }
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "id": "c7b7a89d-032a-428c-a52a-5431054d4c45",
+          "name": "starter_ix_code",
+          "unique": false,
+          "fulltext": true,
+          "using": "na",
+          "algorithm": "na",
+          "lockoption": "na",
+          "cols": [
+            {
+              "id": "f3305912-0a67-4f6c-8ff9-2f9b96b17e98",
+              "colid": "57feda74-6175-472a-b0c0-92cccce780df",
+              "mariadb": {
+                "desc": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "48f606cc-fb32-4286-9561-983a529e622a",
+          "name": "starter_ix_name",
+          "unique": false,
+          "fulltext": true,
+          "using": "na",
+          "algorithm": "na",
+          "lockoption": "na",
+          "cols": [
+            {
+              "id": "281be8cf-ebd0-406b-8717-38ded4c9ba81",
+              "colid": "245ee1cc-d69e-4de5-8173-bfe56e39a8d6",
+              "mariadb": {
+                "desc": false
+              }
+            }
+          ]
+        }
+      ],
+      "embeddable": false,
+      "generate": true,
+      "generateCustomCode": true,
+      "customCode": "",
+      "tabletype": "InnoDB",
+      "collation": "utf8mb4_general_ci",
+      "charset": "utf8mb4",
+      "rowformat": "",
+      "database": "starter",
+      "initautoinc": "",
+      "temporary": false,
+      "ifnotexists": false,
+      "_properties": {
+        "plural": "starters"
+      },
+      "_relationships": [],
+      "_enums": {}
+    }
+  },
+  "relations": {},
+  "notes": {},
+  "lines": {},
+  "model": {
+    "color": "transparent",
+    "activeDiagram": "914a25f8-2e60-46c0-a2cf-907835861077",
+    "caseConvention": "under",
+    "def_charset": "utf8mb4",
+    "def_collation": "utf8mb4_general_ci",
+    "def_coltopk": true,
+    "def_rowformat": "",
+    "def_tabletype": "InnoDB",
+    "def_database": "service",
+    "desc": "# 🧩 Microservice Starter Project\n\nThis is a **NestJS-based microservice starter template** designed for building scalable, maintainable, and secure distributed systems. It provides a **production-ready foundation** that follows modern best practices in microservice architecture.\n\n---\n\n## ✅ Features\n\n- **Modular Architecture** – Organized using NestJS feature modules\n- **CQRS Pattern** – Built-in support for Command Query Responsibility Segregation\n- **Event-Driven Design** – Easily integrate with message brokers and event stores\n- **Config Management** – Environment-based configuration using `@nestjs/config`\n- **Health Checks** – Supports readiness and liveness probes via `@nestjs/terminus`\n- **Structured Logging** – JSON-based logging with Pino or Winston\n- **DTO Validation** – Uses `class-validator` and `class-transformer`\n- **OpenAPI Support** – Auto-generates API documentation with `@nestjs/swagger`\n- **Testing Setup** – Includes unit and e2e testing configurations using Jest\n\n---\n\n## 🛠 Optional Integrations\n\n- **Message Brokers** – Redis, Kafka, or RabbitMQ for pub/sub and event bus patterns\n- **Event Sourcing** – Integrate with EventStoreDB for domain event storage\n- **Databases** – PostgreSQL, MongoDB, or SQLite (TypeORM or Prisma supported)\n- **AuthN/AuthZ** – Keycloak for authentication, Open Policy Agent (OPA) for authorization\n\n---\n\n## 🚀 Ideal For\n\n- Backend services in **microservice** or **modular monolith** architectures\n- Teams practicing **Domain-Driven Design (DDD)**, **CQRS**, and **event sourcing**\n- Fast-tracking secure, observable, and extensible NestJS services\n\n---\n\n> Designed to scale with your team and evolve with your architecture.\n",
+    "id": "6645c9b2-33b9-4cef-bcf6-5f382e5ff3a6",
+    "isDirty": true,
+    "name": "Starter Service",
+    "parentTableInFkCols": true,
+    "path": "",
+    "replaceSpace": "_",
+    "sideSelections": true,
+    "storedin": {
+      "major": 4,
+      "minor": 6,
+      "extra": 6
+    },
+    "type": "MARIADB",
+    "version": 1,
+    "lastSaved": 1749184309941,
+    "beforeScript": "",
+    "afterScript": "",
+    "sqlSettings": {
+      "wrapLines": true,
+      "wrapOffset": 80,
+      "indent": true,
+      "indentationString": "spaces",
+      "indentationSize": 2,
+      "limitItemsOnLine": true,
+      "maxListItemsOnLine": 3,
+      "statementDelimiter": ";",
+      "routineDelimiter": "//",
+      "keywordCase": "upper",
+      "identiferCase": "original",
+      "includeSchema": "always",
+      "quotationExistance": "if_needed"
+    },
+    "writeFileParam": false,
+    "modelHTMLReportDir": "D:\\gs\\cqrs-builder\\tools\\domain\\report",
+    "modelPdfReportPath": "D:\\gs\\banking\\gs\\mdt\\gsmdm-person\\tools\\domain\\data\\Masterdata person management.pdf",
+    "connectionVersion": "",
+    "authorName": "",
+    "companyDetails": "",
+    "companyUrl": "",
+    "synchronizationSettings": {
+      "preserveData": "use_temporary_tables",
+      "ignoreSystemDefaults": "yes",
+      "includeWarnings": "yes",
+      "includeCreationSql": "no"
+    },
+    "laststoredin": {
+      "major": 10,
+      "minor": 1,
+      "extra": 0
+    }
+  },
+  "otherObjects": {},
+  "diagrams": {
+    "914a25f8-2e60-46c0-a2cf-907835861077": {
+      "id": "914a25f8-2e60-46c0-a2cf-907835861077",
+      "lineColor": "transparent",
+      "description": "this is the main diagram",
+      "diagramItems": {
+        "62498fe2-f963-485a-ba03-e0886cd8f8c5": {
+          "referencedItemId": "62498fe2-f963-485a-ba03-e0886cd8f8c5",
+          "x": 45,
+          "y": 30,
+          "gHeight": 146,
+          "gWidth": 239,
+          "color": "#ffffff",
+          "background": "#03a9f4",
+          "resized": false,
+          "autoExpand": true,
+          "backgroundOpacity": "10",
+          "collapsed": false
+        }
+      },
+      "isOpen": true,
+      "main": true,
+      "name": "Template details",
+      "keysgraphics": true,
+      "linegraphics": "detailed",
+      "zoom": 1,
+      "background": "transparent",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "type": "erd",
+      "showColumns": true,
+      "showColumnDataTypes": true,
+      "showSampleData": false,
+      "showTableIndexes": true,
+      "showTableDescriptions": false,
+      "showEstimatedSize": false,
+      "showSchemaContainer": true,
+      "showEmbeddedInParents": true,
+      "showCardinalityCaptions": true,
+      "showRelations": true,
+      "backgroundImage": "na",
+      "descriptionsColor": "transparent",
+      "showHorizontal": true,
+      "showDescriptions": false,
+      "showIndicators": true,
+      "showProgress": true,
+      "lineWidth": "2",
+      "boxSize": "0",
+      "showIndicatorCaptions": true,
+      "embeddedSpacing": "2",
+      "showMainIcon": true,
+      "showLabels": true,
+      "boxSpacing": "2",
+      "boxAlign": "center",
+      "showRelationshipNames": false,
+      "showLineCaptions": false,
+      "showCustomizations": true,
+      "showExportDimensions": false
+    },
+    "a9be86f6-8c2b-48f4-a608-f4a42b34552f": {
+      "name": "Main Diagram",
+      "description": "",
+      "id": "a9be86f6-8c2b-48f4-a608-f4a42b34552f",
+      "keysgraphics": true,
+      "linegraphics": "detailed",
+      "zoom": 1,
+      "background": "transparent",
+      "lineColor": "transparent",
+      "isOpen": true,
+      "main": false,
+      "diagramItems": {},
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "type": "erd",
+      "showColumns": true,
+      "showColumnDataTypes": true,
+      "showSampleData": false,
+      "showTableIndexes": true,
+      "showTableDescriptions": false,
+      "showEstimatedSize": false,
+      "showSchemaContainer": true,
+      "showEmbeddedInParents": true,
+      "showCardinalityCaptions": true,
+      "showRelations": true,
+      "backgroundImage": "na",
+      "descriptionsColor": "transparent",
+      "showHorizontal": true,
+      "showDescriptions": false,
+      "showIndicators": true,
+      "showProgress": true,
+      "lineWidth": "2",
+      "boxSize": "0",
+      "showIndicatorCaptions": true,
+      "embeddedSpacing": "2",
+      "showMainIcon": true,
+      "showLabels": true,
+      "boxSpacing": "2",
+      "boxAlign": "center",
+      "showRelationshipNames": false,
+      "showLineCaptions": false,
+      "showCustomizations": false,
+      "showExportDimensions": false
+    }
+  },
+  "diagramsOrder": [
+    "a9be86f6-8c2b-48f4-a608-f4a42b34552f"
+  ],
+  "order": [
+    "62498fe2-f963-485a-ba03-e0886cd8f8c5"
+  ],
+  "collapsedTreeItems": [],
+  "reverseStats": {},
+  "parameters": {
+    "starter": {
+      "store": {
+        "read": "sql,eventstream,redis",
+        "write": "sql,eventstream,redis",
+        "list": "sql,eventstream,redis"
+      },
+      "cancel": {
+        "create": false,
+        "update": false,
+        "delete": false,
+        "batch": false,
+        "get": false
+      },
+      "complete": [],
+      "redis": {
+        "redis": {
+          "category": "lookups:core.starter.v1",
+          "ttl": 3600,
+          "hash": true
+        },
+        "prefix": "starter-service",
+        "aggregate": "starter",
+        "version": "v1"
+      },
+      "eventstream": {
+        "stream": "core.starter.v1",
+        "create-type": "create",
+        "update-type": "update",
+        "boundedContext": "starter-service",
+        "aggregate": "starter",
+        "version": "v1"
+      },
+      "cols": {
+        "code": {},
+        "name": {},
+        "description": {},
+        "active": {}
+      },
+      "docs": {
+        "summary": "This is the Starter module"
+      },
+      "permissions": {
+        "enabled": true,
+        "prefix": ""
+      },
+      "apis": {}
+    }
+  },
+  "service": {
+    "name": "gsnest-microservice-starter",
+    "version": "1",
+    "module": "starter-service",
+    "hasRedis": false,
+    "hasSql": false,
+    "hasEventStream": false
+  },
+  "excluded": [],
+  "sourceDirectory": "D:\\gsnew\\gsnest-microservice-starter\\src\\starter-service"
+}

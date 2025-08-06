@@ -679,7 +679,7 @@ function generateUpdateMethods(
     lines.push(`  updateConfiguration(`);
     lines.push('    user: IUserToken,');
     lines.push(`    ${camelCase(className)}: ${className},`);
-    lines.push('    config: {');
+    lines.push('    _config: {');
 
     table._relationships.forEach((relation) => {
       const col = table.cols.find((c) => c.name === relation.childCol);
@@ -700,7 +700,7 @@ function generateUpdateMethods(
     );
     if (complexObjects.length) {
       lines.push(
-        `    this.validateConfigurationCompatibility(${camelCase(className)}, config);`,
+        `    this.validateConfigurationCompatibility(${camelCase(className)}, _config);`,
       );
     }
     lines.push('');
@@ -712,9 +712,9 @@ function generateUpdateMethods(
       const col = table.cols.find((c) => c.name === relation.childCol);
       if (col && col.datatype === 'JSON') {
         const fieldName = camelCase(col.name);
-        lines.push(`    if (config.${fieldName}) {`);
+        lines.push(`    if (_config.${fieldName}) {`);
         lines.push(
-          `      ${camelCase(className)}.update${upperFirst(fieldName)}(user, config.${fieldName});`,
+          `      ${camelCase(className)}.update${upperFirst(fieldName)}(user, _config.${fieldName});`,
         );
         lines.push('    }');
       }
@@ -760,6 +760,7 @@ function generateRelationshipMethods(
         `../../../${kebabCase(obj.tableName)}/domain`,
         obj.model,
       );
+      console.log(obj);
       lines.push(`  manage${upperFirst(fieldName)}(`);
       lines.push('    user: IUserToken,');
       lines.push(`    ${camelCase(className)}: ${className},`);
@@ -775,7 +776,7 @@ function generateRelationshipMethods(
       remove: operations.remove,
     };
 
-    ${camelCase(className)}.manage${upperFirst(fieldName)}InBulk(user, convertedOperations);`);
+    ${camelCase(className)}.manage${upperFirst(camelCase(pluralize(obj.rel.parentTable)))}InBulk(user, convertedOperations);`);
       lines.push('  }');
       lines.push('');
     }
@@ -993,7 +994,7 @@ function generateValidationMethods(
    */
   private validateConfigurationCompatibility(
     ${camelCase(className)}: ${className},
-    config: {`);
+    _config: {`);
     table._relationships.forEach((relation) => {
       const col = table.cols.find((c) => c.name === relation.childCol);
       if (col && col.datatype === 'JSON') {
@@ -1017,14 +1018,14 @@ function generateValidationMethods(
       'validateConfigurationCompatibility: Cross-configuration compatibility validation not implemented',
       {
         ${camelCase(className)}Id: ${camelCase(className)}.getId(),
-        configTypes: Object.keys(config).filter(
-          (key) => config[key as keyof typeof config] !== undefined,
+        configTypes: Object.keys(_config).filter(
+          (key) => _config[key as keyof typeof _config] !== undefined,
         ),
       },
     );
 
     // Basic null checks - prevent silent failures
-    if (!config || Object.keys(config).length === 0) {
+    if (!_config || Object.keys(_config).length === 0) {
       this.logger.warn(
         'validateConfigurationCompatibility: Empty configuration provided',
       );
@@ -1075,10 +1076,10 @@ function generateValidationMethods(
   // Generate validation methods for each entity from complexObjects
   complexObjects.forEach((obj) => {
     const fieldName = camelCase(obj.key);
-    const relationship = table._relationships.find(
-      (r) => r.childCol === obj.key,
-    );
-    if (!relationship) return;
+    // const relationship = table._relationships.find(
+    //   (r) => r.childCol === obj.key,
+    // );
+    // if (!relationship) return;
 
     lines.push(`  /**
    * Validates ${fieldName} compatibility with existing ${camelCase(className)} configuration.

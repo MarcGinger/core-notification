@@ -1,8 +1,11 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { Subscription } from 'rxjs';
 import { ILogger } from 'src/shared/logger';
 import { EsdbEventStore } from './esdb-event-store';
-import { IEventStoreMeta, StoreSubscriptionOptions } from './event-store.model';
-import { Subscription } from 'rxjs';
+import {
+  EventStoreMetaProps,
+  StoreSubscriptionOptions,
+} from './event-store.model';
 
 @Injectable()
 export class SnapshotService {
@@ -54,12 +57,12 @@ export class SnapshotService {
    * This will first catch up on historical events, then subscribe to live events.
    * @template T The event data type
    * @param {string} stream - The stream name or pattern to subscribe to
-   * @param {(event: T, meta: IEventStoreMeta) => void} onEvent - Event handler function
+   * @param {(event: T, meta: EventStoreMetaProps) => void} onEvent - Event handler function
    * @returns {Promise<Subscription>} Promise resolving to the subscription
    */
   async setupCatchupSubscription<T>(
     stream: string,
-    onEvent: (event: T, meta: IEventStoreMeta) => void,
+    onEvent: (event: T, meta: EventStoreMetaProps) => void,
   ): Promise<Subscription> {
     this.logger.debug({ stream }, 'Setting up catchup subscription for stream');
 
@@ -121,12 +124,12 @@ export class SnapshotService {
    * Perform catchup only on a stream (no live subscription).
    * @template T The event data type
    * @param {string} stream - The stream name to catch up on
-   * @param {(event: T, meta: IEventStoreMeta) => void} onEvent - Event handler function
+   * @param {(event: T, meta: EventStoreMetaProps) => void} onEvent - Event handler function
    * @returns {Promise<bigint | undefined>} Promise resolving to the last processed revision
    */
   async catchupStream<T>(
     stream: string,
-    onEvent: (event: T, meta: IEventStoreMeta) => void,
+    onEvent: (event: T, meta: EventStoreMetaProps) => void,
   ): Promise<bigint | undefined> {
     this.logger.debug({ stream }, 'Starting catchup for stream');
 
