@@ -9,11 +9,11 @@
  */
 
 export interface CreateMessageProps {
-  readonly configCode: string;
   readonly channel: string;
+  readonly configCode: string;
   readonly templateCode?: string;
   readonly payload?: Record<string, any>;
-  readonly renderedMessage?: string;
   readonly scheduledAt?: Date;
+  readonly priority?: number;
   readonly correlationId?: string;
 }

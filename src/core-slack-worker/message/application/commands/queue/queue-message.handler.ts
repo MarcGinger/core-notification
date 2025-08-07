@@ -12,7 +12,7 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { handleCommandError } from 'src/shared/application/commands';
 import { MessageExceptionMessage } from '../../../domain/exceptions';
 import { QueueMessageCommand } from './queue-message.command';
-import { QueueMessageUseCase } from '../../usecases/queue-message.usecase';
+import { QueueMessageUseCase } from '../../usecases';
 
 @CommandHandler(QueueMessageCommand)
 export class QueueMessageHandler
@@ -22,6 +22,14 @@ export class QueueMessageHandler
 
   async execute(command: QueueMessageCommand): Promise<void> {
     const { user, props } = command;
+
+    // create a IMessage entity from the props
+    // call render-message-template.usecase to get the rendered message
+    // add correlationId to the props
+    // add correlationId new uuid()
+
+    // create the aggregate root from the props
+    // call the use case to queue the message
 
     try {
       await this.queueMessageUseCase.execute(user, props);

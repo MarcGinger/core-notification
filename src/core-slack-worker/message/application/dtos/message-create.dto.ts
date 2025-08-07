@@ -25,16 +25,17 @@ import {
   ApiMessageTemplateCode,
   ApiMessageUpdatedAt,
 } from './decorators';
+import { ApiMessagePriority } from './decorators/priority.decorator';
 
 /**
  * Message create request DTO
  */
 export class MessageCreateRequest implements CreateMessageProps {
-  @ApiMessageConfigCode({ required: true })
-  readonly configCode: string;
-
   @ApiMessageChannel({ required: true })
   readonly channel: string;
+
+  @ApiMessageConfigCode({ required: true })
+  readonly configCode: string;
 
   @ApiMessageTemplateCode()
   readonly templateCode?: string;
@@ -42,30 +43,12 @@ export class MessageCreateRequest implements CreateMessageProps {
   @ApiMessagePayload()
   readonly payload?: Record<string, any>;
 
-  @ApiMessageRenderedMessage()
-  readonly renderedMessage?: string;
-
-  @ApiMessageStatus({ required: true })
-  readonly status: MessageStatusEnum;
-
   @ApiMessageScheduledAt()
   readonly scheduledAt?: Date;
 
-  @ApiMessageSentAt()
-  readonly sentAt?: Date;
-
-  @ApiMessageFailureReason()
-  readonly failureReason?: string;
+  @ApiMessagePriority()
+  readonly priority?: number;
 
   @ApiMessageCorrelationId()
   readonly correlationId?: string;
-
-  @ApiMessageRetryCount({ required: true })
-  readonly retryCount: number;
-
-  @ApiMessageCreatedAt({ required: true })
-  readonly createdAt: Date;
-
-  @ApiMessageUpdatedAt({ required: true })
-  readonly updatedAt: Date;
 }

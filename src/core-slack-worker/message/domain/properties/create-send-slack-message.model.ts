@@ -9,7 +9,6 @@
  */
 
 export interface CreateSendSlackMessageProps {
-  readonly code: string;
   readonly channel: string;
   readonly configCode: string;
   readonly templateCode?: string;

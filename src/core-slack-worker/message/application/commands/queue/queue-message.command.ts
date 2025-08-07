@@ -9,12 +9,12 @@
  */
 
 import { ICommand } from '@nestjs/cqrs';
-import { IMessage } from '../../../domain/entities';
 import { IUserToken } from 'src/shared/auth';
+import { CreateMessageProps } from 'src/core-slack-worker/message/domain';
 
 export class QueueMessageCommand implements ICommand {
   constructor(
     public user: IUserToken,
-    public readonly props: IMessage,
+    public readonly props: CreateMessageProps,
   ) {}
 }

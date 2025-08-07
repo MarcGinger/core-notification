@@ -1,5 +1,22 @@
 /**
- * Copyright (c) 2025 Marc Ginger. All rights reserved.
+ * Coimport { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { v4 as uuidv4 } from 'uuid';
+import { handleCommandError } from 'src/shared/application/commands';
+import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
+import {
+  QUEUE_NAMES,
+  QUEUE_PRIORITIES,
+} from 'src/shared/infrastructure/bullmq';
+import { MessageRepository } from '../../infrastructure/repositories';
+import { MessageExceptionMessage } from '../../domain/exceptions';
+import { MessageDomainService } from '../../domain/services';
+import { IUserToken } from 'src/shared/auth';
+import { CreateMessageProps } from '../../domain/properties';
+import { Message } from '../../domain/aggregates';
+import { MessageStatusEnum } from '../../domain/entities';
+import { RenderMessageTemplateUseCase } from './render-message-template.usecase';Marc Ginger. All rights reserved.
  *
  * This file is part of a proprietary NestJS system developed by Marc Ginger.
  * Unauthorized copying, modification, distribution, or use of this file,
@@ -11,6 +28,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { v4 as uuidv4 } from 'uuid';
 import { handleCommandError } from 'src/shared/application/commands';
 import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
 import {
@@ -21,23 +39,10 @@ import { MessageRepository } from '../../infrastructure/repositories';
 import { MessageExceptionMessage } from '../../domain/exceptions';
 import { MessageDomainService } from '../../domain/services';
 import { IUserToken } from 'src/shared/auth';
-import { SnapshotMessageProps } from '../../domain/properties';
-import { IMessage, Message } from '../../domain';
-
-/**
- * Properties for queuing a message
- */
-export interface QueueMessageProps {
-  tenant: string;
-  configCode: string;
-  channel: string;
-  templateCode?: string;
-  payload?: Record<string, any>;
-  renderedMessage: string;
-  scheduledAt?: Date;
-  correlationId: string;
-  priority?: number;
-}
+import { CreateMessageProps } from '../../domain/properties';
+import { Message } from '../../domain/aggregates';
+import { MessageStatusEnum } from '../../domain/entities';
+import { RenderMessageTemplateUseCase } from './render-message-template.usecase';
 
 /**
  * Use case for queuing Slack messages for delivery.
@@ -57,6 +62,7 @@ export class QueueMessageUseCase {
     @InjectQueue(QUEUE_NAMES.SLACK_MESSAGE) private slackQueue: Queue,
     private readonly messageRepository: MessageRepository,
     private readonly domainService: MessageDomainService,
+    private readonly renderMessageTemplateUseCase: RenderMessageTemplateUseCase,
   ) {}
 
   /**
@@ -68,15 +74,19 @@ export class QueueMessageUseCase {
    */
   async execute(
     user: IUserToken,
-    props: IMessage,
+    props: CreateMessageProps,
   ): Promise<{ messageId: string; jobId: string }> {
-    // Enhanced logging context for queue operation start
+    // Input validation first
+    this.validateInput(user, props);
 
+    const correlationId = props.correlationId || uuidv4();
+
+    // Enhanced logging context for queue operation start
     const operationContext =
       CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-        'QueueSlackMessageUseCase',
+        'QueueMessageUseCase',
         'execute',
-        props.correlationId,
+        correlationId,
         user,
         {
           operation: 'QUEUE',
@@ -89,7 +99,6 @@ export class QueueMessageUseCase {
           configCode: props?.configCode,
           templateCode: props?.templateCode,
           hasPayload: !!props?.payload,
-          hasRenderedMessage: !!props?.renderedMessage,
           isScheduled: !!props?.scheduledAt,
           priority: props?.priority,
         },
@@ -97,26 +106,30 @@ export class QueueMessageUseCase {
 
     this.logger.log(
       operationContext,
-      `Starting Slack message queueing: correlationId '${props.correlationId}'`,
+      `Starting Slack message queueing: correlationId '${correlationId}'`,
     );
 
     try {
-      // Input validation
-      this.validateInput(user, props);
-
-      // // Create domain aggregate using domain service
-      // const createMessageProps: CreateMessageProps = {
-      //   configCode: props.configCode,
-      //   channel: props.channel,
-      //   templateCode: props.templateCode,
-      //   payload: props.payload,
-      //   renderedMessage: props.renderedMessage,
-      //   scheduledAt: props.scheduledAt,
-      //   correlationId: props.correlationId,
-      // };
+      // Render the message template
+      const renderedMessage = await this.renderMessageTemplateUseCase.execute(
+        user,
+        props,
+      );
 
       // Create message aggregate through domain service
-      const messageAggregate = new Message(Message.fromEntity(props));
+      const messageAggregate = new Message(
+        Message.fromEntity({
+          ...props,
+          renderedMessage,
+          correlationId,
+          priority: props.priority || QUEUE_PRIORITIES.HIGH,
+          id: uuidv4(),
+          status: MessageStatusEnum.PENDING,
+          retryCount: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+      );
       // const messageAggregate = await this.domainService.createMessage(
       //   user,
       //   createMessageProps,
@@ -142,8 +155,8 @@ export class QueueMessageUseCase {
         {
           messageId: messageAggregate.getId(),
           channel: props.channel,
-          renderedMessage: props.renderedMessage,
-          correlationId: props.correlationId,
+          renderedMessage: renderedMessage,
+          correlationId: correlationId,
           configCode: props.configCode,
         },
         jobOptions,
@@ -226,7 +239,7 @@ export class QueueMessageUseCase {
   /**
    * Validates input properties with enhanced logging
    */
-  private validateInput(user: IUserToken, props: SnapshotMessageProps): void {
+  private validateInput(user: IUserToken, props: CreateMessageProps): void {
     // User validation
     if (!user) {
       const errorContext =
@@ -283,9 +296,6 @@ export class QueueMessageUseCase {
     }
     if (!props.channel) {
       validationErrors.push('channel');
-    }
-    if (!props.renderedMessage) {
-      validationErrors.push('renderedMessage');
     }
     if (!props.correlationId) {
       validationErrors.push('correlationId');

@@ -9,19 +9,12 @@
  */
 
 import { ICommand } from '@nestjs/cqrs';
-
-/**
- * Command for rendering message templates with provided payload data
- */
-export interface RenderMessageTemplateProps {
-  tenant: string;
-  templateCode?: string;
-  payload?: Record<string, any>;
-  channel: string;
-  configCode?: string;
-  correlationId: string;
-}
+import { CreateMessageProps } from '../../../domain/properties';
+import { IUserToken } from 'src/shared/auth';
 
 export class RenderMessageTemplateCommand implements ICommand {
-  constructor(public readonly props: RenderMessageTemplateProps) {}
+  constructor(
+    public user: IUserToken,
+    public readonly props: CreateMessageProps,
+  ) {}
 }

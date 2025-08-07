@@ -11,8 +11,8 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { handleCommandError } from 'src/shared/application/commands';
 import { MessageExceptionMessage } from '../../../domain/exceptions';
-import { RenderMessageTemplateUseCase } from '../../usecases';
 import { RenderMessageTemplateCommand } from './render-message-template.command';
+import { RenderMessageTemplateUseCase } from '../../usecases';
 
 @CommandHandler(RenderMessageTemplateCommand)
 export class RenderMessageTemplateHandler
@@ -23,10 +23,10 @@ export class RenderMessageTemplateHandler
   ) {}
 
   async execute(command: RenderMessageTemplateCommand): Promise<string> {
-    const { props } = command;
+    const { user, props } = command;
 
     try {
-      return await this.renderMessageTemplateUseCase.execute(props);
+      return await this.renderMessageTemplateUseCase.execute(user, props);
     } catch (error) {
       handleCommandError(error, null, MessageExceptionMessage.createError);
       throw error;

@@ -11,17 +11,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
 import { MessageTemplateDomainService } from '../../domain/services/message-template.domain-service';
-
-/**
- * Properties for rendering a message template
- */
-export interface RenderMessageTemplateProps {
-  templateCode?: string;
-  payload?: Record<string, any>;
-  channel: string;
-  tenant: string;
-  configCode?: string;
-}
+import { IUserToken } from 'src/shared/auth';
+import { CreateMessageProps } from '../../domain/properties';
 
 /**
  * Use case for rendering message templates.
@@ -46,13 +37,13 @@ export class RenderMessageTemplateUseCase {
    * @param props - The rendering properties
    * @returns Promise<string> - The rendered message
    */
-  async execute(props: RenderMessageTemplateProps): Promise<string> {
+  async execute(user: IUserToken, props: CreateMessageProps): Promise<string> {
     // Enhanced logging context for render operation start
     const operationContext =
       CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
         'RenderMessageTemplateUseCase',
         'execute',
-        `${props.tenant}-${props.templateCode || 'no-template'}`,
+        `${user.tenant}-${props.templateCode || 'no-template'}`,
         undefined, // No user context in this use case
         {
           operation: 'RENDER',
@@ -60,7 +51,7 @@ export class RenderMessageTemplateUseCase {
           phase: 'START',
           hasProps: !!props,
           templateCode: props?.templateCode,
-          tenant: props?.tenant,
+          tenant: user?.tenant,
           channel: props?.channel,
           configCode: props?.configCode,
           hasPayload: !!props?.payload,
@@ -70,7 +61,7 @@ export class RenderMessageTemplateUseCase {
 
     this.logger.log(
       operationContext,
-      `Starting message template rendering: templateCode '${props.templateCode || 'no-template'}', tenant '${props.tenant}'`,
+      `Starting message template rendering: templateCode '${props.templateCode || 'no-template'}', tenant '${user.tenant}'`,
     );
 
     try {
@@ -92,7 +83,7 @@ export class RenderMessageTemplateUseCase {
           CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
             'RenderMessageTemplateUseCase',
             'execute',
-            `${props.tenant}-${props.templateCode || 'no-template'}`,
+            `${user.tenant}-${props.templateCode || 'no-template'}`,
             undefined,
             {
               operation: 'RENDER',
@@ -116,7 +107,7 @@ export class RenderMessageTemplateUseCase {
       // For now, use a mock template content
       const templateContent = await this.loadTemplateContent(
         props.templateCode!,
-        props.tenant,
+        user.tenant || 'core',
       );
 
       // Use domain service to render the message
@@ -137,7 +128,7 @@ export class RenderMessageTemplateUseCase {
           CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
             'RenderMessageTemplateUseCase',
             'execute',
-            `${props.tenant}-${props.templateCode}`,
+            `${user.tenant}-${props.templateCode}`,
             undefined,
             {
               operation: 'RENDER',
@@ -166,7 +157,7 @@ export class RenderMessageTemplateUseCase {
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
           'RenderMessageTemplateUseCase',
           'execute',
-          `${props.tenant}-${props.templateCode}`,
+          `${user.tenant}-${props.templateCode}`,
           undefined,
           {
             operation: 'RENDER',
@@ -192,7 +183,7 @@ export class RenderMessageTemplateUseCase {
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
           'RenderMessageTemplateUseCase',
           'execute',
-          `${props.tenant}-${props.templateCode || 'no-template'}`,
+          `${user.tenant}-${props.templateCode || 'no-template'}`,
           undefined,
           {
             operation: 'RENDER',
