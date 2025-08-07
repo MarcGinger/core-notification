@@ -21,12 +21,13 @@ import {
   SlackMessageRequestResponse,
 } from '../../application/dtos/slack-message-request.dto';
 import { SlackMessageRequestService } from '../../application/services/slack-message-request.service';
+import { Public } from 'nest-keycloak-connect';
 
 /**
  * Controller for handling Slack message requests from external services
  */
 @ApiTags('Slack Messages')
-@ApiBearerAuth()
+@Public()
 @Controller({
   path: 'slack/messages',
   version: '1',

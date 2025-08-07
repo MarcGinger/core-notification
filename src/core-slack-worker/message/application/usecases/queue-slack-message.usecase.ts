@@ -11,17 +11,17 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { handleCommandError } from 'src/shared/application/commands';
 import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
 import {
   QUEUE_NAMES,
   QUEUE_PRIORITIES,
 } from 'src/shared/infrastructure/bullmq';
-import { MessageEntity } from '../../infrastructure/entities';
-import { MessageStatusEnum } from '../../domain/entities';
+import { MessageRepository } from '../../infrastructure/repositories';
 import { MessageExceptionMessage } from '../../domain/exceptions';
+import { MessageDomainService } from '../../domain/services';
+import { IUserToken } from 'src/shared/auth';
+import { CreateMessageProps } from '../../domain/properties';
 
 /**
  * Properties for queuing a Slack message
@@ -54,17 +54,19 @@ export class QueueSlackMessageUseCase {
 
   constructor(
     @InjectQueue(QUEUE_NAMES.SLACK_MESSAGE) private slackQueue: Queue,
-    @InjectRepository(MessageEntity)
-    private readonly messageRepository: Repository<MessageEntity>,
+    private readonly messageRepository: MessageRepository,
+    private readonly domainService: MessageDomainService,
   ) {}
 
   /**
-   * Queues a Slack message for delivery
+   * Queues a Slack message for delivery using domain-driven approach
+   * @param user - The user performing the operation
    * @param props - The message properties
    * @returns Promise<{ messageId: string; jobId: string }> - The created message and job IDs
    * @throws MessageExceptionMessage - When queueing fails
    */
   async execute(
+    user: IUserToken,
     props: QueueSlackMessageProps,
   ): Promise<{ messageId: string; jobId: string }> {
     // Enhanced logging context for queue operation start
@@ -73,11 +75,12 @@ export class QueueSlackMessageUseCase {
         'QueueSlackMessageUseCase',
         'execute',
         props.correlationId,
-        undefined, // No user context in this use case
+        user,
         {
           operation: 'QUEUE',
           entityType: 'slack-message',
           phase: 'START',
+          hasUser: !!user,
           hasProps: !!props,
           propsFields: props ? Object.keys(props).length : 0,
           tenant: props?.tenant,
@@ -98,25 +101,24 @@ export class QueueSlackMessageUseCase {
 
     try {
       // Input validation
-      this.validateInput(props);
+      this.validateInput(user, props);
 
-      // Create and save MessageEntity with pending status
-      const messageEntity = this.messageRepository.create({
-        tenantId: props.tenant,
+      // Create domain aggregate using domain service
+      const createMessageProps: CreateMessageProps = {
         configCode: props.configCode,
         channel: props.channel,
         templateCode: props.templateCode,
         payload: props.payload,
         renderedMessage: props.renderedMessage,
-        status: MessageStatusEnum.PENDING,
         scheduledAt: props.scheduledAt,
         correlationId: props.correlationId,
-        retryCount: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      };
 
-      const savedMessage = await this.messageRepository.save(messageEntity);
+      // Create message aggregate through domain service
+      const messageAggregate = await this.domainService.createMessage(
+        user,
+        createMessageProps,
+      );
 
       // Queue delivery job with appropriate priority and scheduling
       const jobOptions = {
@@ -136,7 +138,7 @@ export class QueueSlackMessageUseCase {
       const job = await this.slackQueue.add(
         'deliver-slack-message',
         {
-          messageId: savedMessage.id,
+          messageId: messageAggregate.getId(),
           tenant: props.tenant,
           channel: props.channel,
           renderedMessage: props.renderedMessage,
@@ -146,8 +148,18 @@ export class QueueSlackMessageUseCase {
         jobOptions,
       );
 
-      // TODO: Emit SlackMessageQueuedEvent when EventBus is available
-      // const queuedEvent = new SlackMessageQueuedEvent(...)
+      // Mark the message as queued and emit domain event
+      messageAggregate.markAsQueued(
+        user,
+        job.id?.toString() || '',
+        jobOptions.priority,
+      );
+
+      // Save the aggregate with the new events
+      const savedMessage = await this.messageRepository.saveMessage(
+        user,
+        messageAggregate,
+      );
 
       // Success logging with enhanced context
       const successContext =
@@ -155,7 +167,7 @@ export class QueueSlackMessageUseCase {
           'QueueSlackMessageUseCase',
           'execute',
           props.correlationId,
-          undefined,
+          user,
           {
             operation: 'QUEUE',
             entityType: 'slack-message',
@@ -185,7 +197,7 @@ export class QueueSlackMessageUseCase {
           'QueueSlackMessageUseCase',
           'execute',
           props.correlationId,
-          undefined,
+          user,
           {
             operation: 'QUEUE',
             entityType: 'slack-message',
@@ -213,14 +225,39 @@ export class QueueSlackMessageUseCase {
   /**
    * Validates input properties with enhanced logging
    */
-  private validateInput(props: QueueSlackMessageProps): void {
-    if (!props) {
+  private validateInput(user: IUserToken, props: QueueSlackMessageProps): void {
+    // User validation
+    if (!user) {
       const errorContext =
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
           'QueueSlackMessageUseCase',
           'validateInput',
           'unknown',
           undefined,
+          {
+            operation: 'QUEUE',
+            entityType: 'slack-message',
+            validationError: 'missing_user',
+          },
+        );
+
+      this.logger.warn(
+        errorContext,
+        'Slack message queueing attempted without user authentication',
+      );
+
+      throw new BadRequestException(
+        'User authentication required for message queueing',
+      );
+    }
+
+    if (!props) {
+      const errorContext =
+        CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
+          'QueueSlackMessageUseCase',
+          'validateInput',
+          'unknown',
+          user,
           {
             operation: 'QUEUE',
             entityType: 'slack-message',
@@ -262,7 +299,7 @@ export class QueueSlackMessageUseCase {
           'QueueSlackMessageUseCase',
           'validateInput',
           props.correlationId || 'unknown',
-          undefined,
+          user,
           {
             operation: 'QUEUE',
             entityType: 'slack-message',

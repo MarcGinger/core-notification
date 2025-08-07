@@ -23,10 +23,10 @@ export class QueueSlackMessageHandler
   ) {}
 
   async execute(command: QueueSlackMessageCommand): Promise<void> {
-    const { props } = command;
+    const { user, props } = command;
 
     try {
-      await this.queueSlackMessageUseCase.execute(props);
+      await this.queueSlackMessageUseCase.execute(user, props);
     } catch (error) {
       handleCommandError(error, null, MessageExceptionMessage.createError);
       throw error;

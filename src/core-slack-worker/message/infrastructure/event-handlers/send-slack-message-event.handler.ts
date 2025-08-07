@@ -263,7 +263,7 @@ export class SendSlackMessageEventHandler {
       }
 
       // Execute Slack delivery via queue command (no new message creation)
-      const queueCommand = new QueueSlackMessageCommand({
+      const queueCommand = new QueueSlackMessageCommand(tenantUser, {
         tenant: tenant || 'unknown',
         configCode: eventData.configCode,
         channel: eventData.channel,
@@ -431,7 +431,7 @@ export class SendSlackMessageEventHandler {
       }
 
       // Queue the message using QueueSlackMessageCommand
-      const queueCommand = new QueueSlackMessageCommand({
+      const queueCommand = new QueueSlackMessageCommand(user, {
         tenant: user.tenant || 'unknown',
         configCode: eventData.configCode,
         channel: eventData.channel,
@@ -529,7 +529,7 @@ export class SendSlackMessageEventHandler {
           renderedMessage = eventData.renderedMessage;
         }
 
-        const queueCommand = new QueueSlackMessageCommand({
+        const queueCommand = new QueueSlackMessageCommand(user, {
           tenant: user.tenant || 'unknown',
           configCode: eventData.configCode,
           channel: eventData.channel,

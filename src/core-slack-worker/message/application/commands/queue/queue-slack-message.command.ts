@@ -9,6 +9,7 @@
  */
 
 import { ICommand } from '@nestjs/cqrs';
+import { IUserToken } from 'src/shared/auth';
 
 /**
  * Command for queueing slack messages for background processing
@@ -26,5 +27,8 @@ export interface QueueSlackMessageProps {
 }
 
 export class QueueSlackMessageCommand implements ICommand {
-  constructor(public readonly props: QueueSlackMessageProps) {}
+  constructor(
+    public user: IUserToken,
+    public readonly props: QueueSlackMessageProps,
+  ) {}
 }

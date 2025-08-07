@@ -11,15 +11,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
 import {
   QUEUE_NAMES,
   QUEUE_PRIORITIES,
 } from 'src/shared/infrastructure/bullmq';
-import { MessageEntity } from '../../infrastructure/entities';
 import { MessageStatusEnum } from '../../domain/entities';
+import { MessageRepository } from '../../infrastructure/repositories';
+import { MessageDomainService } from '../../domain/services';
+import { IUserToken } from 'src/shared/auth';
+import { Message } from '../../domain';
 
 /**
  * Properties for handling Slack message failure
@@ -51,16 +52,20 @@ export class HandleSlackMessageFailureUseCase {
 
   constructor(
     @InjectQueue(QUEUE_NAMES.SLACK_MESSAGE) private slackQueue: Queue,
-    @InjectRepository(MessageEntity)
-    private readonly messageRepository: Repository<MessageEntity>,
+    private readonly messageRepository: MessageRepository,
+    private readonly messageDomainService: MessageDomainService,
   ) {}
 
   /**
    * Handles Slack message delivery failure
+   * @param user - The user context (system user for automated failures)
    * @param props - The failure properties
    * @returns Promise<void>
    */
-  async execute(props: HandleSlackMessageFailureProps): Promise<void> {
+  async execute(
+    user: IUserToken,
+    props: HandleSlackMessageFailureProps,
+  ): Promise<void> {
     // Enhanced logging context for failure handling start
     const operationContext =
       CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
@@ -90,24 +95,32 @@ export class HandleSlackMessageFailureUseCase {
     );
 
     try {
-      // Update message entity
-      const updateData: Partial<MessageEntity> = {
-        retryCount: props.retryCount,
-        failureReason: props.failureReason,
-        updatedAt: new Date(),
-      };
+      // Load message aggregate from repository
+      const messageEntity = await this.messageRepository.getMessage(
+        user,
+        props.messageId,
+      );
+      const message = Message.fromEntity(messageEntity);
 
-      if (!props.willRetry) {
-        updateData.status = MessageStatusEnum.FAILED;
+      // Use domain methods to handle the failure
+      if (props.willRetry) {
+        // Mark for retry with incremented count and failure reason
+        const nextRetryAt = new Date(
+          Date.now() + Math.min(Math.pow(2, props.retryCount) * 1000, 60000),
+        );
+        message.markForRetry(user, props.failureReason, nextRetryAt);
+      } else {
+        // Mark as permanently failed
+        message.markAsFailed(user, props.failureReason);
       }
 
-      await this.messageRepository.update(
-        {
-          tenantId: props.tenant,
-          id: props.messageId,
-        },
-        updateData,
-      );
+      // Update retry count if different
+      if (message.retryCount !== props.retryCount) {
+        message.updateRetryCount(user, props.retryCount);
+      }
+
+      // Save the aggregate (this will persist domain events)
+      await this.messageRepository.saveMessage(user, message);
 
       // Handle retry logic
       if (props.willRetry) {
@@ -229,9 +242,8 @@ export class HandleSlackMessageFailureUseCase {
         },
       );
 
-      // Emit retry event
-      // TODO: Publish retryEvent to EventBus or EventStore when available
-      // For now, we'll log the event details for audit purposes
+      // Domain events are automatically published when the aggregate is saved
+      // MessageDeliveryFailedEvent or MessageRetryingEvent will be emitted based on willRetry flag
       const eventLogContext =
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
           'HandleSlackMessageFailureUseCase',
@@ -244,7 +256,9 @@ export class HandleSlackMessageFailureUseCase {
             phase: 'EVENT_CREATED',
             messageId: props.messageId,
             correlationId: props.correlationId,
-            eventType: 'SlackMessageRetriedEvent',
+            eventType: props.willRetry
+              ? 'MessageRetryingEvent'
+              : 'MessageDeliveryFailedEvent',
             retryJobId: retryJob.id?.toString(),
             nextRetryAttempt,
             retryDelayMs: retryDelay,
@@ -254,7 +268,7 @@ export class HandleSlackMessageFailureUseCase {
 
       this.logger.log(
         eventLogContext,
-        `Created SlackMessageRetriedEvent for messageId '${props.messageId}', jobId '${retryJob.id}'`,
+        `Domain event ${props.willRetry ? 'MessageRetryingEvent' : 'MessageDeliveryFailedEvent'} will be published for messageId '${props.messageId}', jobId '${retryJob.id}'`,
       );
 
       // Success logging with enhanced context

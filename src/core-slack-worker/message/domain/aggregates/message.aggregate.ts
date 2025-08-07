@@ -16,6 +16,7 @@ import {
   MessageCreatedEvent,
   MessageDeliveredEvent,
   MessageDeliveryFailedEvent,
+  MessageQueuedEvent,
   MessageRetryingEvent,
   MessageScheduledEvent,
   MessageUpdatedEvent,
@@ -227,6 +228,30 @@ export class Message
    */
   markAsDelivered(user: IUserToken): void {
     this.updateStatus(user, MessageStatusEnum.SUCCESS);
+  }
+
+  /**
+   * Marks the message as queued for processing
+   * @param user - The user performing the operation
+   * @param jobId - The queue job ID
+   * @param priority - The queue priority
+   */
+  markAsQueued(user: IUserToken, jobId: string, priority: number): void {
+    const previousStatus = this._status;
+    this.updateStatus(user, MessageStatusEnum.PENDING);
+
+    // Emit specific queued event with additional metadata
+    this.apply(
+      new MessageQueuedEvent(
+        user,
+        this.getId(),
+        this.toDto(),
+        new Date(),
+        jobId,
+        priority,
+        previousStatus,
+      ),
+    );
   }
 
   /**
