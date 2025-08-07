@@ -8,7 +8,7 @@
  * Confidential and proprietary.
  */
 
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Inject, Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { ILogger } from 'src/shared/logger';
@@ -44,6 +44,71 @@ export class SlackMessageProcessor extends WorkerHost {
     private readonly sendSlackMessageUseCase: SendSlackMessageUseCase,
   ) {
     super();
+    this.logger.log(
+      {
+        component: 'SlackMessageProcessor',
+        method: 'constructor',
+      },
+      'SlackMessageProcessor constructor called - processor instantiated',
+    );
+  }
+
+  onModuleInit() {
+    this.logger.log(
+      {
+        component: 'SlackMessageProcessor',
+        method: 'onModuleInit',
+      },
+      'SlackMessageProcessor onModuleInit called - worker should be starting',
+    );
+  }
+
+  @OnWorkerEvent('ready')
+  onReady() {
+    this.logger.log(
+      {
+        component: 'SlackMessageProcessor',
+        method: 'onReady',
+      },
+      'SlackMessageProcessor worker is ready and listening for jobs',
+    );
+  }
+
+  @OnWorkerEvent('active')
+  onActive(job: Job) {
+    this.logger.log(
+      {
+        component: 'SlackMessageProcessor',
+        method: 'onActive',
+        jobId: job.id,
+      },
+      'SlackMessageProcessor worker started processing job',
+    );
+  }
+
+  @OnWorkerEvent('completed')
+  onCompleted(job: Job) {
+    this.logger.log(
+      {
+        component: 'SlackMessageProcessor',
+        method: 'onCompleted',
+        jobId: job.id,
+      },
+      'SlackMessageProcessor worker completed job',
+    );
+  }
+
+  @OnWorkerEvent('failed')
+  onFailed(job: Job | undefined, err: Error) {
+    this.logger.error(
+      {
+        component: 'SlackMessageProcessor',
+        method: 'onFailed',
+        jobId: job?.id,
+        error: err.message,
+      },
+      'SlackMessageProcessor worker failed to process job',
+    );
   }
 
   async process(job: Job<SlackMessageJobData>): Promise<any> {
@@ -57,6 +122,15 @@ export class SlackMessageProcessor extends WorkerHost {
       isRetry: data.isRetry || false,
       retryAttempt: data.retryAttempt || 0,
     };
+
+    this.logger.log(
+      {
+        ...logContext,
+        component: 'SlackMessageProcessor',
+        method: 'process',
+      },
+      'SlackMessageProcessor.process() called - starting job processing',
+    );
 
     try {
       this.logger.log(logContext, 'Processing Slack message delivery job');

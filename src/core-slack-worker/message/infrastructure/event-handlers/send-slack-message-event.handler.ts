@@ -10,9 +10,15 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { IUserToken } from 'src/shared/auth';
 import { EventStoreMetaProps } from 'src/shared/infrastructure/event-store';
 import { ILogger } from 'src/shared/logger';
+import {
+  QUEUE_NAMES,
+  QUEUE_PRIORITIES,
+} from 'src/shared/infrastructure/bullmq';
 import { Message } from '../../domain/aggregates';
 import { MessageStatusEnum } from '../../domain/entities';
 import { MessageCreatedEvent } from '../../domain/events';
@@ -23,6 +29,7 @@ import {
   RenderMessageTemplateCommand,
   QueueSlackMessageCommand,
 } from '../../application/commands';
+import { SlackMessageJobData } from '../processors/slack-message.processor';
 
 /**
  * Send Slack Message Event Handler responsible for processing
@@ -41,6 +48,8 @@ export class SendSlackMessageEventHandler {
     private readonly commandBus: CommandBus,
     private readonly processedEventRepository: ProcessedEventRepository,
     private readonly messageRepository: MessageRepository,
+    @InjectQueue(QUEUE_NAMES.SLACK_MESSAGE)
+    private readonly slackQueue: Queue<SlackMessageJobData>,
   ) {
     // Create a system user for operations
     this.systemUser = {
@@ -86,21 +95,44 @@ export class SendSlackMessageEventHandler {
         );
         // Continue processing but log the issue
       } else {
+        this.logger.log(
+          {
+            component: 'SendSlackMessageEventHandler',
+            debugPoint: 'DEDUPLICATION_CHECK_START',
+            revision: meta.revision.toString(),
+            revisionType: typeof meta.revision,
+            messageId: meta.aggregateId,
+          },
+          'DEBUG: Starting deduplication check',
+        );
+
         // Check if this event has already been processed to prevent duplicates
-        // Use the event type stream name for deduplication, not the individual aggregate stream
-        const eventTypeStream = '$et-slack.message.created.v1';
+        // Use the individual aggregate stream for proper deduplication
+        const aggregateStream = meta.stream;
 
         const alreadyProcessed =
           await this.processedEventRepository.isSlackEventProcessed(
-            eventTypeStream,
+            aggregateStream,
             meta.revision,
           );
+
+        this.logger.log(
+          {
+            component: 'SendSlackMessageEventHandler',
+            debugPoint: 'DEDUPLICATION_CHECK_RESULT',
+            revision: meta.revision.toString(),
+            aggregateStream,
+            alreadyProcessed,
+            messageId: meta.aggregateId,
+          },
+          'DEBUG: Deduplication check completed',
+        );
 
         if (alreadyProcessed) {
           this.logger.debug(
             {
               eventType: meta.eventType,
-              eventTypeStream: eventTypeStream,
+              aggregateStream: aggregateStream,
               individualStream: meta.stream,
               revision: meta.revision.toString(),
               aggregateId: meta.aggregateId,
@@ -112,14 +144,26 @@ export class SendSlackMessageEventHandler {
 
         // Mark as processing BEFORE sending Slack message to prevent race conditions
         try {
+          this.logger.log(
+            {
+              component: 'SendSlackMessageEventHandler',
+              debugPoint: 'MARK_AS_PROCESSING_START',
+              revision: meta.revision.toString(),
+              aggregateStream,
+              messageId: meta.aggregateId,
+            },
+            'DEBUG: About to mark event as processing',
+          );
+
           await this.processedEventRepository.markSlackEventAsProcessing(
-            eventTypeStream,
+            aggregateStream,
             meta.revision,
           );
+
           this.logger.debug(
             {
               revision: meta.revision.toString(),
-              eventTypeStream,
+              aggregateStream,
               markedAsProcessing: true,
             },
             'Successfully marked event as processing to prevent race conditions',
@@ -129,7 +173,7 @@ export class SendSlackMessageEventHandler {
           this.logger.debug(
             {
               revision: meta.revision.toString(),
-              eventTypeStream,
+              aggregateStream,
               error: error instanceof Error ? error.message : 'Unknown error',
             },
             'Could not mark event as processing - likely already being processed by another handler',
@@ -139,11 +183,22 @@ export class SendSlackMessageEventHandler {
       }
 
       // Check if this is a MessageCreatedEvent
+      this.logger.log(
+        {
+          component: 'SendSlackMessageEventHandler',
+          debugPoint: 'EVENT_TYPE_CHECK',
+          eventType: meta.eventType,
+          expectedEventType: MessageCreatedEvent.EVENT_TYPE,
+          isMessageCreatedEvent: this.isMessageCreatedEvent(meta.eventType),
+          messageId: meta.aggregateId,
+        },
+        'DEBUG: Checking if event is MessageCreatedEvent',
+      );
+
       if (!this.isMessageCreatedEvent(meta.eventType)) {
         if (meta.revision !== undefined) {
-          const eventTypeStream = '$et-slack.message.created.v1';
           await this.processedEventRepository.markSlackEventAsProcessed(
-            eventTypeStream,
+            meta.stream,
             meta.revision,
             'skipped',
           );
@@ -158,6 +213,20 @@ export class SendSlackMessageEventHandler {
 
       // Extract tenant from metadata or stream
       const tenant = meta.tenant || this.extractTenantFromStream(meta.stream);
+      
+      this.logger.log(
+        {
+          component: 'SendSlackMessageEventHandler',
+          debugPoint: 'TENANT_EXTRACTION',
+          metaTenant: meta.tenant,
+          extractedTenant: this.extractTenantFromStream(meta.stream),
+          finalTenant: tenant,
+          streamName: meta.stream,
+          messageId: meta.aggregateId,
+        },
+        'DEBUG: Tenant extraction completed',
+      );
+
       if (!tenant) {
         if (meta.revision) {
           await this.processedEventRepository.markSlackEventAsProcessed(
@@ -193,8 +262,34 @@ export class SendSlackMessageEventHandler {
         'Processing MessageCreatedEvent - triggering Slack delivery',
       );
 
+      // Add extensive debugging for the failing case
+      this.logger.log(
+        {
+          component: 'SendSlackMessageEventHandler',
+          method: 'handleMessageEvent',
+          debugPoint: 'ABOUT_TO_PROCESS_MESSAGE',
+          tenant,
+          messageId: meta.aggregateId,
+          correlationId: eventData.correlationId,
+          channel: eventData.channel,
+          isScheduled: !!eventData.scheduledAt,
+          hasTemplateCode: !!eventData.templateCode,
+        },
+        'DEBUG: About to start message processing pipeline',
+      );
+
       // Check if this is a scheduled message
       if (eventData.scheduledAt) {
+        this.logger.log(
+          {
+            component: 'SendSlackMessageEventHandler',
+            debugPoint: 'SCHEDULED_MESSAGE_CHECK',
+            scheduledAt: eventData.scheduledAt,
+            messageId: meta.aggregateId,
+          },
+          'DEBUG: Processing scheduled message',
+        );
+
         const scheduledDate = new Date(eventData.scheduledAt);
         const now = new Date();
 
@@ -230,12 +325,33 @@ export class SendSlackMessageEventHandler {
         // If scheduled time is in the past or very soon, process immediately
       }
 
+      this.logger.log(
+        {
+          component: 'SendSlackMessageEventHandler',
+          debugPoint: 'ABOUT_TO_RENDER_TEMPLATE',
+          messageId: meta.aggregateId,
+          templateCode: eventData.templateCode,
+          hasTemplateCode: !!eventData.templateCode,
+        },
+        'DEBUG: About to render message template',
+      );
+
       // Create Slack delivery data from message event
       // Use meta.aggregateId as messageId (this is the aggregate ID from EventStore)
       let renderedMessage = 'Message content'; // Default fallback
 
       // Render message using template if templateCode is provided
       if (eventData.templateCode) {
+        this.logger.log(
+          {
+            component: 'SendSlackMessageEventHandler',
+            debugPoint: 'RENDERING_TEMPLATE',
+            templateCode: eventData.templateCode,
+            messageId: meta.aggregateId,
+          },
+          'DEBUG: Rendering template',
+        );
+
         try {
           const renderCommand = new RenderMessageTemplateCommand({
             templateCode: eventData.templateCode,
@@ -246,6 +362,17 @@ export class SendSlackMessageEventHandler {
             correlationId: eventData.correlationId || 'unknown',
           });
           renderedMessage = await this.commandBus.execute(renderCommand);
+
+          this.logger.log(
+            {
+              component: 'SendSlackMessageEventHandler',
+              debugPoint: 'TEMPLATE_RENDERED_SUCCESS',
+              templateCode: eventData.templateCode,
+              messageId: meta.aggregateId,
+              renderedLength: renderedMessage.length,
+            },
+            'DEBUG: Template rendered successfully',
+          );
         } catch (error) {
           this.logger.warn(
             {
@@ -260,21 +387,103 @@ export class SendSlackMessageEventHandler {
       } else if (eventData.renderedMessage) {
         // Use pre-rendered message if available
         renderedMessage = eventData.renderedMessage;
+        this.logger.log(
+          {
+            component: 'SendSlackMessageEventHandler',
+            debugPoint: 'USING_PRE_RENDERED',
+            messageId: meta.aggregateId,
+            renderedLength: renderedMessage.length,
+          },
+          'DEBUG: Using pre-rendered message',
+        );
       }
 
-      // Execute Slack delivery via queue command (no new message creation)
-      const queueCommand = new QueueSlackMessageCommand(tenantUser, {
-        tenant: tenant || 'unknown',
-        configCode: eventData.configCode,
-        channel: eventData.channel,
-        templateCode: eventData.templateCode,
-        payload: eventData.payload,
-        renderedMessage: renderedMessage,
-        scheduledAt: eventData.scheduledAt,
-        correlationId: eventData.correlationId || 'unknown',
-        priority: 1,
-      });
-      await this.commandBus.execute(queueCommand);
+      this.logger.log(
+        {
+          component: 'SendSlackMessageEventHandler',
+          debugPoint: 'ABOUT_TO_QUEUE_EXISTING_MESSAGE',
+          messageId: meta.aggregateId,
+          renderedMessageLength: renderedMessage.length,
+          channel: eventData.channel,
+        },
+        'DEBUG: About to load existing message and queue it directly',
+      );
+
+      // Load the existing message aggregate and queue it directly (no new message creation)
+      try {
+        const existingMessage = await this.messageRepository.getMessage(
+          tenantUser,
+          meta.aggregateId,
+        );
+        const messageAggregate = Message.fromEntity(existingMessage);
+
+        // Add the message to BullMQ queue directly
+        const jobOptions = {
+          priority: QUEUE_PRIORITIES.HIGH,
+          delay: eventData.scheduledAt
+            ? Math.max(
+                0,
+                new Date(eventData.scheduledAt).getTime() - Date.now(),
+              )
+            : 0,
+          attempts: 4,
+          backoff: {
+            type: 'exponential' as const,
+            delay: 2000,
+          },
+          removeOnComplete: 100,
+          removeOnFail: 50,
+        };
+
+        const job = await this.slackQueue.add(
+          'deliver-slack-message',
+          {
+            messageId: meta.aggregateId, // Use existing message ID
+            tenant: tenant || 'unknown',
+            channel: eventData.channel,
+            renderedMessage: renderedMessage,
+            correlationId: eventData.correlationId || 'unknown',
+            configCode: eventData.configCode,
+          },
+          jobOptions,
+        );
+
+        // Mark the existing message as queued
+        messageAggregate.markAsQueued(
+          tenantUser,
+          job.id?.toString() || '',
+          jobOptions.priority,
+        );
+
+        // Save the updated aggregate
+        await this.messageRepository.saveMessage(tenantUser, messageAggregate);
+
+        this.logger.log(
+          {
+            component: 'SendSlackMessageEventHandler',
+            debugPoint: 'EXISTING_MESSAGE_QUEUED',
+            messageId: meta.aggregateId,
+            jobId: job.id?.toString(),
+            channel: eventData.channel,
+            tenant,
+          },
+          'DEBUG: Successfully queued existing message',
+        );
+      } catch (queueError) {
+        this.logger.error(
+          {
+            component: 'SendSlackMessageEventHandler',
+            debugPoint: 'QUEUE_ERROR',
+            messageId: meta.aggregateId,
+            error:
+              queueError instanceof Error
+                ? queueError.message
+                : 'Unknown error',
+          },
+          'ERROR: Failed to queue existing message',
+        );
+        throw queueError;
+      }
 
       // Mark event as processed to prevent future duplicates
       if (meta.revision !== undefined) {
