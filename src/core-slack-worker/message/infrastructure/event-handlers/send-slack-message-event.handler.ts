@@ -213,7 +213,7 @@ export class SendSlackMessageEventHandler {
 
       // Extract tenant from metadata or stream
       const tenant = meta.tenant || this.extractTenantFromStream(meta.stream);
-      
+
       this.logger.log(
         {
           component: 'SendSlackMessageEventHandler',
