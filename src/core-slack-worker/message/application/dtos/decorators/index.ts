@@ -11,7 +11,6 @@
 export * from './channel.decorator';
 export * from './config-code.decorator';
 export * from './correlation-id.decorator';
-export * from './created-at.decorator';
 export * from './failure-reason.decorator';
 export * from './id.decorator';
 export * from './payload.decorator';
@@ -21,4 +20,3 @@ export * from './scheduled-at.decorator';
 export * from './sent-at.decorator';
 export * from './status.decorator';
 export * from './template-code.decorator';
-export * from './updated-at.decorator';

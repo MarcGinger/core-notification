@@ -26,6 +26,4 @@ export interface MessageProps {
   readonly failureReason?: string;
   readonly correlationId?: string;
   readonly retryCount: number;
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
 }

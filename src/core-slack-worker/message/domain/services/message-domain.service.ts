@@ -67,8 +67,6 @@ export class MessageDomainService {
       scheduledAt: createData.scheduledAt,
       sentAt: new Date(),
       retryCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
     });
 
     return Promise.resolve(message);

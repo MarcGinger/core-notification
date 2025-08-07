@@ -534,8 +534,6 @@ export class MessageRepository extends SagaCommandRepository<
         failureReason: storedMessage.failureReason,
         correlationId: storedMessage.correlationId,
         retryCount: storedMessage.retryCount,
-        createdAt: storedMessage.createdAt,
-        updatedAt: storedMessage.updatedAt,
       });
     } catch (error) {
       this.logger.error(

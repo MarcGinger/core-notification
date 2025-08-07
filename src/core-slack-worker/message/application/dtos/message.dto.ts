@@ -13,7 +13,6 @@ import {
   ApiMessageChannel,
   ApiMessageConfigCode,
   ApiMessageCorrelationId,
-  ApiMessageCreatedAt,
   ApiMessageFailureReason,
   ApiMessageId,
   ApiMessagePayload,
@@ -23,7 +22,6 @@ import {
   ApiMessageSentAt,
   ApiMessageStatus,
   ApiMessageTemplateCode,
-  ApiMessageUpdatedAt,
 } from './decorators';
 
 /**
@@ -65,10 +63,4 @@ export class MessageResponse implements IMessage {
 
   @ApiMessageRetryCount({ required: true })
   readonly retryCount: number;
-
-  @ApiMessageCreatedAt({ required: true })
-  readonly createdAt: Date;
-
-  @ApiMessageUpdatedAt({ required: true })
-  readonly updatedAt: Date;
 }

@@ -18,12 +18,7 @@ import { MessageDomainEvent } from './message-domain.event';
 export class MessageCreatedEvent extends MessageDomainEvent {
   readonly eventType = 'message.created.v1';
 
-  constructor(
-    user: IUserToken,
-    aggregateId: string,
-    props: IMessage,
-    public readonly createdAt: Date,
-  ) {
+  constructor(user: IUserToken, aggregateId: string, props: IMessage) {
     super(user, aggregateId, props);
   }
 }

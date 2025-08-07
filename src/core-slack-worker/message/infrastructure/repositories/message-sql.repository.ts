@@ -180,8 +180,6 @@ export class MessageSqlRepository extends DomainCommandRepository<
       entity.correlationId = sendSlackMessageDto.correlationId;
       entity.status = sendSlackMessageDto.status;
       entity.retryCount = sendSlackMessageDto.retryCount;
-      entity.createdAt = sendSlackMessageDto.createdAt;
-      entity.updatedAt = sendSlackMessageDto.updatedAt;
 
       // Save the entity
       const savedEntity = await this.sendSlackMessageRepository.save(entity);
@@ -238,8 +236,6 @@ export class MessageSqlRepository extends DomainCommandRepository<
         correlationId: entity.correlationId,
         status: entity.status,
         retryCount: entity.retryCount,
-        createdAt: entity.createdAt,
-        updatedAt: entity.updatedAt,
       };
     } catch (error) {
       this.logger.error(

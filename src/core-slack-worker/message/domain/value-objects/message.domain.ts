@@ -33,15 +33,7 @@ export function messageEquals(
         a.sentAt.getTime() === b.sentAt.getTime())) &&
     a.failureReason === b.failureReason &&
     a.correlationId === b.correlationId &&
-    a.retryCount === b.retryCount &&
-    (a.createdAt === b.createdAt ||
-      (a.createdAt instanceof Date &&
-        b.createdAt instanceof Date &&
-        a.createdAt.getTime() === b.createdAt.getTime())) &&
-    (a.updatedAt === b.updatedAt ||
-      (a.updatedAt instanceof Date &&
-        b.updatedAt instanceof Date &&
-        a.updatedAt.getTime() === b.updatedAt.getTime()))
+    a.retryCount === b.retryCount
   );
 }
 
@@ -67,12 +59,6 @@ export function validateMessage(input: IMessage | string): IMessage {
     throw new MessageDomainException(
       MessageExceptionMessage.requiredRetryCount,
     );
-  }
-  if (obj.createdAt === undefined || obj.createdAt === null) {
-    throw new MessageDomainException(MessageExceptionMessage.requiredCreatedAt);
-  }
-  if (obj.updatedAt === undefined || obj.updatedAt === null) {
-    throw new MessageDomainException(MessageExceptionMessage.requiredUpdatedAt);
   }
   if (Array.isArray(obj.retryCount) && obj.retryCount.length === 0) {
     throw new MessageDomainException(

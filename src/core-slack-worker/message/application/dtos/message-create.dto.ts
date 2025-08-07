@@ -9,21 +9,13 @@
  */
 
 import { CreateMessageProps } from '../../domain/properties';
-import { MessageStatusEnum } from '../../domain/entities';
 import {
   ApiMessageChannel,
   ApiMessageConfigCode,
   ApiMessageCorrelationId,
-  ApiMessageCreatedAt,
-  ApiMessageFailureReason,
   ApiMessagePayload,
-  ApiMessageRenderedMessage,
-  ApiMessageRetryCount,
   ApiMessageScheduledAt,
-  ApiMessageSentAt,
-  ApiMessageStatus,
   ApiMessageTemplateCode,
-  ApiMessageUpdatedAt,
 } from './decorators';
 import { ApiMessagePriority } from './decorators/priority.decorator';
 

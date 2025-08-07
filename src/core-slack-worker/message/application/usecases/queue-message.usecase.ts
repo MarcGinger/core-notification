@@ -1,30 +1,3 @@
-/**
- * Coimport { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import { v4 as uuidv4 } from 'uuid';
-import { handleCommandError } from 'src/shared/application/commands';
-import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
-import {
-  QUEUE_NAMES,
-  QUEUE_PRIORITIES,
-} from 'src/shared/infrastructure/bullmq';
-import { MessageRepository } from '../../infrastructure/repositories';
-import { MessageExceptionMessage } from '../../domain/exceptions';
-import { MessageDomainService } from '../../domain/services';
-import { IUserToken } from 'src/shared/auth';
-import { CreateMessageProps } from '../../domain/properties';
-import { Message } from '../../domain/aggregates';
-import { MessageStatusEnum } from '../../domain/entities';
-import { RenderMessageTemplateUseCase } from './render-message-template.usecase';Marc Ginger. All rights reserved.
- *
- * This file is part of a proprietary NestJS system developed by Marc Ginger.
- * Unauthorized copying, modification, distribution, or use of this file,
- * via any medium, is strictly prohibited and may result in legal action.
- *
- * Confidential and proprietary.
- */
-
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -43,6 +16,7 @@ import { CreateMessageProps } from '../../domain/properties';
 import { Message } from '../../domain/aggregates';
 import { MessageStatusEnum } from '../../domain/entities';
 import { RenderMessageTemplateUseCase } from './render-message-template.usecase';
+import { MessageFactory } from '../../domain/factories';
 
 /**
  * Use case for queuing Slack messages for delivery.
@@ -79,7 +53,7 @@ export class QueueMessageUseCase {
     // Input validation first
     this.validateInput(user, props);
 
-    const correlationId = props.correlationId || uuidv4();
+    const correlationId = props.correlationId ?? uuidv4();
 
     // Enhanced logging context for queue operation start
     const operationContext =
@@ -117,23 +91,11 @@ export class QueueMessageUseCase {
       );
 
       // Create message aggregate through domain service
-      const messageAggregate = new Message(
-        Message.fromEntity({
-          ...props,
-          renderedMessage,
-          correlationId,
-          priority: props.priority || QUEUE_PRIORITIES.HIGH,
-          id: uuidv4(),
-          status: MessageStatusEnum.PENDING,
-          retryCount: 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }),
+      const messageAggregate = MessageFactory.fromProps(
+        props,
+        renderedMessage,
+        correlationId,
       );
-      // const messageAggregate = await this.domainService.createMessage(
-      //   user,
-      //   createMessageProps,
-      // );
 
       // Queue delivery job with appropriate priority and scheduling
       const jobOptions = {
@@ -296,9 +258,6 @@ export class QueueMessageUseCase {
     }
     if (!props.channel) {
       validationErrors.push('channel');
-    }
-    if (!props.correlationId) {
-      validationErrors.push('correlationId');
     }
 
     if (validationErrors.length > 0) {

@@ -42,8 +42,6 @@ export class Message
   private _failureReason?: string;
   private _correlationId?: string;
   private _retryCount: number;
-  private readonly _createdAt: Date;
-  private _updatedAt: Date;
 
   constructor(props: MessageProps) {
     super();
@@ -59,8 +57,6 @@ export class Message
     this._failureReason = props.failureReason;
     this._correlationId = props.correlationId;
     this._retryCount = props.retryCount;
-    this._createdAt = props.createdAt;
-    this._updatedAt = props.updatedAt;
     this.validateState();
   }
 
@@ -120,14 +116,6 @@ export class Message
     return this._retryCount;
   }
 
-  public get createdAt(): Date {
-    return this._createdAt;
-  }
-
-  public get updatedAt(): Date {
-    return this._updatedAt;
-  }
-
   /**
    * Factory method for reconstructing Message aggregate from persisted entity data
    * This ensures proper value object creation during repository hydration
@@ -149,8 +137,6 @@ export class Message
       failureReason: entity.failureReason,
       correlationId: entity.correlationId,
       retryCount: entity.retryCount,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
     };
 
     return new Message(props);
@@ -171,8 +157,6 @@ export class Message
       failureReason: this._failureReason,
       correlationId: this._correlationId,
       retryCount: this._retryCount,
-      createdAt: this._createdAt,
-      updatedAt: this._updatedAt,
     };
   }
 
@@ -535,7 +519,6 @@ export class Message
 
     // Update status and emit specific event based on new status
     this._status = status;
-    this._updatedAt = new Date();
 
     // Emit specific domain event based on the status transition
     this.emitStatusSpecificEvent(user, status, previousStatus);
@@ -673,18 +656,6 @@ export class Message
       //   MessageExceptionMessage.fieldRetryCountRequired,
       // );
     }
-
-    if (!this._createdAt) {
-      throw new MessageDomainException(
-        MessageExceptionMessage.fieldCreatedAtRequired,
-      );
-    }
-
-    if (!this._updatedAt) {
-      throw new MessageDomainException(
-        MessageExceptionMessage.fieldUpdatedAtRequired,
-      );
-    }
   }
 
   public toProps(): MessageProps {
@@ -701,8 +672,6 @@ export class Message
       failureReason: this._failureReason,
       correlationId: this._correlationId,
       retryCount: this._retryCount,
-      createdAt: this._createdAt,
-      updatedAt: this._updatedAt,
     };
   }
 }
