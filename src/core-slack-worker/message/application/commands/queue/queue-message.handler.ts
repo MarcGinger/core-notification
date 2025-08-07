@@ -11,22 +11,20 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { handleCommandError } from 'src/shared/application/commands';
 import { MessageExceptionMessage } from '../../../domain/exceptions';
-import { QueueSlackMessageUseCase } from '../../usecases';
-import { QueueSlackMessageCommand } from './queue-slack-message.command';
+import { QueueMessageCommand } from './queue-message.command';
+import { QueueMessageUseCase } from '../../usecases/queue-message.usecase';
 
-@CommandHandler(QueueSlackMessageCommand)
-export class QueueSlackMessageHandler
-  implements ICommandHandler<QueueSlackMessageCommand, void>
+@CommandHandler(QueueMessageCommand)
+export class QueueMessageHandler
+  implements ICommandHandler<QueueMessageCommand, void>
 {
-  constructor(
-    private readonly queueSlackMessageUseCase: QueueSlackMessageUseCase,
-  ) {}
+  constructor(private readonly queueMessageUseCase: QueueMessageUseCase) {}
 
-  async execute(command: QueueSlackMessageCommand): Promise<void> {
+  async execute(command: QueueMessageCommand): Promise<void> {
     const { user, props } = command;
 
     try {
-      await this.queueSlackMessageUseCase.execute(user, props);
+      await this.queueMessageUseCase.execute(user, props);
     } catch (error) {
       handleCommandError(error, null, MessageExceptionMessage.createError);
       throw error;

@@ -8,5 +8,13 @@
  * Confidential and proprietary.
  */
 
-export * from './slack-message-event.manager';
-export * from './slack-message-event.handler';
+import { ICommand } from '@nestjs/cqrs';
+import { IMessage } from '../../../domain/entities';
+import { IUserToken } from 'src/shared/auth';
+
+export class QueueMessageCommand implements ICommand {
+  constructor(
+    public user: IUserToken,
+    public readonly props: IMessage,
+  ) {}
+}

@@ -36,6 +36,7 @@ export class Message
   private readonly _payload?: Record<string, any>;
   private _renderedMessage?: string;
   private _status: MessageStatusEnum;
+  private _priority?: number;
   private _scheduledAt?: Date;
   private _sentAt?: Date;
   private _failureReason?: string;
@@ -95,6 +96,10 @@ export class Message
     return this._status;
   }
 
+  public get priority(): number | undefined {
+    return this._priority;
+  }
+
   public get scheduledAt(): Date | undefined {
     return this._scheduledAt;
   }
@@ -138,6 +143,7 @@ export class Message
       payload: entity.payload,
       renderedMessage: entity.renderedMessage,
       status: entity.status,
+      priority: entity.priority,
       scheduledAt: entity.scheduledAt,
       sentAt: entity.sentAt,
       failureReason: entity.failureReason,
@@ -159,6 +165,7 @@ export class Message
       payload: this._payload,
       renderedMessage: this._renderedMessage,
       status: this._status,
+      priority: this._priority,
       scheduledAt: this._scheduledAt,
       sentAt: this._sentAt,
       failureReason: this._failureReason,

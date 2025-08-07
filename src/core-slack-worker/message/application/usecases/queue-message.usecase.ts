@@ -21,12 +21,13 @@ import { MessageRepository } from '../../infrastructure/repositories';
 import { MessageExceptionMessage } from '../../domain/exceptions';
 import { MessageDomainService } from '../../domain/services';
 import { IUserToken } from 'src/shared/auth';
-import { CreateMessageProps } from '../../domain/properties';
+import { SnapshotMessageProps } from '../../domain/properties';
+import { IMessage, Message } from '../../domain';
 
 /**
- * Properties for queuing a Slack message
+ * Properties for queuing a message
  */
-export interface QueueSlackMessageProps {
+export interface QueueMessageProps {
   tenant: string;
   configCode: string;
   channel: string;
@@ -49,8 +50,8 @@ export interface QueueSlackMessageProps {
  * - BullMQ integration with proper job scheduling
  */
 @Injectable()
-export class QueueSlackMessageUseCase {
-  private readonly logger = new Logger(QueueSlackMessageUseCase.name);
+export class QueueMessageUseCase {
+  private readonly logger = new Logger(QueueMessageUseCase.name);
 
   constructor(
     @InjectQueue(QUEUE_NAMES.SLACK_MESSAGE) private slackQueue: Queue,
@@ -67,9 +68,10 @@ export class QueueSlackMessageUseCase {
    */
   async execute(
     user: IUserToken,
-    props: QueueSlackMessageProps,
+    props: IMessage,
   ): Promise<{ messageId: string; jobId: string }> {
     // Enhanced logging context for queue operation start
+
     const operationContext =
       CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
         'QueueSlackMessageUseCase',
@@ -83,7 +85,6 @@ export class QueueSlackMessageUseCase {
           hasUser: !!user,
           hasProps: !!props,
           propsFields: props ? Object.keys(props).length : 0,
-          tenant: props?.tenant,
           channel: props?.channel,
           configCode: props?.configCode,
           templateCode: props?.templateCode,
@@ -103,22 +104,23 @@ export class QueueSlackMessageUseCase {
       // Input validation
       this.validateInput(user, props);
 
-      // Create domain aggregate using domain service
-      const createMessageProps: CreateMessageProps = {
-        configCode: props.configCode,
-        channel: props.channel,
-        templateCode: props.templateCode,
-        payload: props.payload,
-        renderedMessage: props.renderedMessage,
-        scheduledAt: props.scheduledAt,
-        correlationId: props.correlationId,
-      };
+      // // Create domain aggregate using domain service
+      // const createMessageProps: CreateMessageProps = {
+      //   configCode: props.configCode,
+      //   channel: props.channel,
+      //   templateCode: props.templateCode,
+      //   payload: props.payload,
+      //   renderedMessage: props.renderedMessage,
+      //   scheduledAt: props.scheduledAt,
+      //   correlationId: props.correlationId,
+      // };
 
       // Create message aggregate through domain service
-      const messageAggregate = await this.domainService.createMessage(
-        user,
-        createMessageProps,
-      );
+      const messageAggregate = new Message(Message.fromEntity(props));
+      // const messageAggregate = await this.domainService.createMessage(
+      //   user,
+      //   createMessageProps,
+      // );
 
       // Queue delivery job with appropriate priority and scheduling
       const jobOptions = {
@@ -139,7 +141,6 @@ export class QueueSlackMessageUseCase {
         'deliver-slack-message',
         {
           messageId: messageAggregate.getId(),
-          tenant: props.tenant,
           channel: props.channel,
           renderedMessage: props.renderedMessage,
           correlationId: props.correlationId,
@@ -225,12 +226,12 @@ export class QueueSlackMessageUseCase {
   /**
    * Validates input properties with enhanced logging
    */
-  private validateInput(user: IUserToken, props: QueueSlackMessageProps): void {
+  private validateInput(user: IUserToken, props: SnapshotMessageProps): void {
     // User validation
     if (!user) {
       const errorContext =
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-          'QueueSlackMessageUseCase',
+          'QueueMessageUseCase',
           'validateInput',
           'unknown',
           undefined,
@@ -277,9 +278,6 @@ export class QueueSlackMessageUseCase {
 
     const validationErrors: string[] = [];
 
-    if (!props.tenant) {
-      validationErrors.push('tenant');
-    }
     if (!props.configCode) {
       validationErrors.push('configCode');
     }

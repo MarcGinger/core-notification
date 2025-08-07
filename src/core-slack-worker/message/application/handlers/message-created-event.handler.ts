@@ -11,7 +11,7 @@ import { CreateMessageProps } from '../../domain/properties';
 import { MessageRepository } from '../../infrastructure/repositories';
 import {
   RenderMessageTemplateCommand,
-  QueueSlackMessageCommand,
+  ScheduleExistingMessageCommand,
 } from '../commands';
 import { Message } from '../../domain/aggregates';
 
@@ -122,19 +122,18 @@ export class MessageCreatedEventHandler {
 
     // Business Logic: Schedule the message
     try {
-      const queueCommand = new QueueSlackMessageCommand(user, {
+      const scheduleCommand = new ScheduleExistingMessageCommand(user, {
+        messageId: aggregateId, // Use existing message ID
         tenant,
         configCode: eventData.configCode,
         channel: eventData.channel,
-        templateCode: eventData.templateCode,
-        payload: eventData.payload,
         renderedMessage,
         scheduledAt: scheduledDate,
         correlationId: correlationId || 'unknown',
         priority: 1,
       });
 
-      await this.commandBus.execute(queueCommand);
+      await this.commandBus.execute(scheduleCommand);
 
       // Business Logic: Update message status to reflect scheduling
       await this.updateMessageStatus(
@@ -176,19 +175,18 @@ export class MessageCreatedEventHandler {
     );
 
     // Business Logic: Queue for immediate processing
-    const queueCommand = new QueueSlackMessageCommand(user, {
+    const scheduleCommand = new ScheduleExistingMessageCommand(user, {
+      messageId: aggregateId, // Use existing message ID
       tenant,
       configCode: eventData.configCode,
       channel: eventData.channel,
-      templateCode: eventData.templateCode,
-      payload: eventData.payload,
       renderedMessage,
       scheduledAt: eventData.scheduledAt,
       correlationId: correlationId || 'unknown',
       priority: 1,
     });
 
-    await this.commandBus.execute(queueCommand);
+    await this.commandBus.execute(scheduleCommand);
 
     this.logger.log(
       {

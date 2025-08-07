@@ -22,6 +22,7 @@ export interface SnapshotMessageProps {
   readonly sentAt?: Date;
   readonly failureReason?: string;
   readonly correlationId?: string;
+  readonly priority?: number;
   readonly retryCount: number;
   readonly createdAt: Date;
   readonly updatedAt: Date;

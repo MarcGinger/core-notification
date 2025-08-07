@@ -12,23 +12,23 @@ import { ICommand } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
 
 /**
- * Command for queueing slack messages for background processing
+ * Command for scheduling an existing message for delivery via BullMQ
+ * This is used when processing EventStore events to avoid creating new message aggregates
  */
-export interface QueueSlackMessageProps {
+export interface ScheduleExistingMessageProps {
+  messageId: string; // Existing message ID from EventStore
   tenant: string;
   configCode: string;
   channel: string;
-  templateCode?: string;
-  payload?: Record<string, any>;
   renderedMessage: string;
   scheduledAt?: Date;
   correlationId: string;
   priority?: number;
 }
 
-export class QueueSlackMessageCommand implements ICommand {
+export class ScheduleExistingMessageCommand implements ICommand {
   constructor(
     public user: IUserToken,
-    public readonly props: QueueSlackMessageProps,
+    public readonly props: ScheduleExistingMessageProps,
   ) {}
 }

@@ -24,6 +24,7 @@ export interface IMessage {
   readonly payload?: Record<string, any>;
   readonly renderedMessage?: string;
   readonly status: MessageStatusEnum;
+  readonly priority?: number;
   readonly scheduledAt?: Date;
   readonly sentAt?: Date;
   readonly failureReason?: string;

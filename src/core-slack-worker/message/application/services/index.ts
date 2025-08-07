@@ -9,3 +9,4 @@
  */
 
 export * from './message-application.service';
+export * from './message.service';

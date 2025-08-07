@@ -16,7 +16,10 @@ import {
 } from 'src/shared/infrastructure';
 import { LoggerModule } from 'src/shared/logger';
 import { MessageCommands } from './application/commands';
-import { MessageApplicationService } from './application/services';
+import {
+  MessageApplicationService,
+  MessageService,
+} from './application/services';
 import { MessageUseCases } from './application/usecases';
 import { MessageExceptionMessage } from './domain/exceptions';
 import {
@@ -27,7 +30,7 @@ import {
 import { MessageController } from './infrastructure/controllers';
 import { SlackMessageRequestController } from './infrastructure/controllers/slack-message-request.controller';
 import {
-  SendSlackMessageEventHandler,
+  SlackMessageEventHandler,
   SlackMessageEventSubscriptionManager,
 } from './infrastructure/event-handlers';
 import {
@@ -51,6 +54,7 @@ import { SlackMessageQueueService } from './infrastructure/services/slack-messag
   ],
   controllers: [MessageController, SlackMessageRequestController],
   providers: [
+    MessageService,
     MessageDomainService,
     SlackDeliveryDomainService,
     MessageTemplateDomainService,
@@ -77,21 +81,16 @@ import { SlackMessageQueueService } from './infrastructure/services/slack-messag
       useValue: MessageExceptionMessage,
     },
 
-    SendSlackMessageEventHandler,
+    SlackMessageEventHandler,
     SlackMessageEventSubscriptionManager,
-    {
-      provide: 'SendSlackMessageEventHandler',
-      useExisting: SendSlackMessageEventHandler,
-    },
   ],
   exports: [
     MessageRepository,
     MessageSqlRepository,
-    SendSlackMessageEventHandler,
+    SlackMessageEventHandler,
     SlackMessageEventSubscriptionManager,
     SlackMessageRequestService,
     SlackMessageQueueService,
-    'SendSlackMessageEventHandler',
   ],
 })
 export class MessageModule {}

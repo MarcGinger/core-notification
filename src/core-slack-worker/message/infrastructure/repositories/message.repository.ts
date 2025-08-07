@@ -528,6 +528,7 @@ export class MessageRepository extends SagaCommandRepository<
         payload: storedMessage.payload,
         renderedMessage: storedMessage.renderedMessage,
         status: storedMessage.status,
+        priority: storedMessage.priority,
         scheduledAt: storedMessage.scheduledAt,
         sentAt: storedMessage.sentAt,
         failureReason: storedMessage.failureReason,

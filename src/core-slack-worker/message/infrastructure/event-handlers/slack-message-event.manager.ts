@@ -21,8 +21,8 @@ import {
   EventStoreMetaProps,
 } from 'src/shared/infrastructure/event-store';
 import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
-import { CreateMessageProps } from '../../domain/properties';
-import { SendSlackMessageEventHandler } from './send-slack-message-event.handler';
+import { SlackMessageEventHandler } from './slack-message-event.handler';
+import { IMessage } from '../../domain/entities';
 
 /**
  * Message projection manager responsible for setting up and managing
@@ -44,7 +44,7 @@ export class SlackMessageEventSubscriptionManager
   constructor(
     @Inject('ILogger') private readonly logger: ILogger,
     private readonly eventOrchestration: EventOrchestrationService,
-    private readonly sendSlackMessageEventHandler: SendSlackMessageEventHandler,
+    private readonly sendSlackMessageEventHandler: SlackMessageEventHandler,
   ) {}
 
   /**
@@ -144,13 +144,10 @@ export class SlackMessageEventSubscriptionManager
       // We don't want to reprocess all historical Slack messages on startup
       this.eventOrchestration.subscribeLiveOnly(
         streamPattern,
-        (event: CreateMessageProps, meta: EventStoreMetaProps) => {
+        (event: IMessage, meta: EventStoreMetaProps) => {
           void this.handleMessageEvent(event, meta);
         },
       );
-
-      // Mark projection as initialized after catchup completes
-      this.sendSlackMessageEventHandler.markAsInitialized();
 
       const successContext =
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
@@ -229,7 +226,7 @@ export class SlackMessageEventSubscriptionManager
    * Handle message events and route them to the event handler
    */
   private async handleMessageEvent(
-    event: CreateMessageProps,
+    event: IMessage,
     meta: EventStoreMetaProps,
   ): Promise<void> {
     try {
@@ -276,8 +273,9 @@ export class SlackMessageEventSubscriptionManager
    * Health check for the event handler
    */
   isHealthy(): boolean {
-    const healthy =
-      this.isRunning && this.sendSlackMessageEventHandler.isHealthy();
+    // Simplified health check - just check if the manager is running
+    // The simplified handler doesn't need complex health tracking
+    const healthy = this.isRunning;
 
     if (!healthy) {
       const context = CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
@@ -287,7 +285,6 @@ export class SlackMessageEventSubscriptionManager
         undefined,
         {
           isRunning: this.isRunning,
-          eventHandlerHealthy: this.sendSlackMessageEventHandler.isHealthy(),
         },
       );
 

@@ -4,21 +4,19 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
-import { CommandBus } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
 import { EventStoreMetaProps } from 'src/shared/infrastructure/event-store';
 import { ILogger } from 'src/shared/logger';
-import { CreateMessageProps } from '../../domain/properties';
 import { MessageCreatedEvent } from '../../domain/events';
-import { QueueSlackMessageCommand, RenderMessageTemplateCommand } from '../../application/commands';
-
+import { MessageService } from '../../application/services';
+import { IMessage } from '../../domain';
 @Injectable()
-export class SimplifiedSendSlackMessageEventHandler {
+export class SlackMessageEventHandler {
   private readonly systemUser: IUserToken;
 
   constructor(
     @Inject('ILogger') private readonly logger: ILogger,
-    private readonly commandBus: CommandBus,
+    private readonly messageService: MessageService,
   ) {
     this.systemUser = {
       sub: 'system-slack-event-handler',
@@ -34,12 +32,12 @@ export class SimplifiedSendSlackMessageEventHandler {
    * Simple event handler - EventStore handles deduplication for us
    */
   async handleMessageEvent(
-    eventData: CreateMessageProps,
+    eventData: IMessage,
     meta: EventStoreMetaProps,
   ): Promise<void> {
     this.logger.log(
       {
-        component: 'SimplifiedSendSlackMessageEventHandler',
+        component: 'SlackMessageEventHandler',
         eventType: meta.eventType,
         stream: meta.stream,
         messageId: meta.aggregateId,
@@ -68,7 +66,7 @@ export class SimplifiedSendSlackMessageEventHandler {
       const tenantUser: IUserToken = { ...this.systemUser, tenant };
 
       // Process the message (business logic)
-      await this.processMessage(tenantUser, eventData, meta);
+      await this.processMessage(tenantUser, eventData);
 
       this.logger.log(
         {
@@ -90,56 +88,35 @@ export class SimplifiedSendSlackMessageEventHandler {
   }
 
   /**
-   * Business logic for processing the message
+   * Simple processing - directly use existing working command
    */
   private async processMessage(
     user: IUserToken,
-    eventData: CreateMessageProps,
-    meta: EventStoreMetaProps,
+    eventData: IMessage,
   ): Promise<void> {
-    // Render message content
-    let renderedMessage = 'Default message content';
-    
-    if (eventData.templateCode) {
-      try {
-        const renderCommand = new RenderMessageTemplateCommand({
-          templateCode: eventData.templateCode,
-          payload: eventData.payload,
-          channel: eventData.channel,
-          tenant: user.tenant,
-          configCode: eventData.configCode,
-          correlationId: eventData.correlationId || 'unknown',
-        });
-        renderedMessage = await this.commandBus.execute(renderCommand);
-      } catch (error) {
-        this.logger.warn(
-          { templateCode: eventData.templateCode, error },
-          'Template rendering failed - using fallback',
-        );
-        renderedMessage = eventData.renderedMessage || 'Default message content';
-      }
-    } else if (eventData.renderedMessage) {
-      renderedMessage = eventData.renderedMessage;
-    }
+    // Use the existing working QueueSlackMessageCommand
+    // This was working fine before - no need to complicate it
+    // const queueCommand = this.messageService(user, {
+    //   tenant: user.tenant!,
+    //   configCode: eventData.configCode,
+    //   channel: eventData.channel,
+    //   templateCode: eventData.templateCode,
+    //   payload: eventData.payload,
+    //   renderedMessage: eventData.renderedMessage || 'Default message content',
+    //   scheduledAt: eventData.scheduledAt,
+    //   correlationId: eventData.correlationId || 'unknown',
+    //   priority: 1,
+    // });
 
-    // Queue the message
-    const queueCommand = new QueueSlackMessageCommand(user, {
-      tenant: user.tenant,
-      configCode: eventData.configCode,
-      channel: eventData.channel,
-      templateCode: eventData.templateCode,
-      payload: eventData.payload,
-      renderedMessage,
-      scheduledAt: eventData.scheduledAt,
-      correlationId: eventData.correlationId || 'unknown',
-      priority: 1,
-    });
+    // await this.commandBus.execute(queueCommand);
 
-    await this.commandBus.execute(queueCommand);
+    await this.messageService.queueMessage(user, eventData);
   }
 
   private isMessageCreatedEvent(eventType: string): boolean {
-    return eventType.toLowerCase().includes(MessageCreatedEvent.EVENT_TYPE.toLowerCase());
+    return eventType
+      .toLowerCase()
+      .includes(MessageCreatedEvent.EVENT_TYPE.toLowerCase());
   }
 
   private extractTenantFromStream(streamName: string): string | null {
