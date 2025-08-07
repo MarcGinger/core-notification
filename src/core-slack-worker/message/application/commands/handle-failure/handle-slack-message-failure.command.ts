@@ -8,6 +8,7 @@
  * Confidential and proprietary.
  */
 
+import { ICommand } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
 
 export interface HandleSlackMessageFailureProps {
@@ -21,7 +22,7 @@ export interface HandleSlackMessageFailureProps {
   willRetry: boolean;
 }
 
-export class HandleSlackMessageFailureCommand {
+export class HandleSlackMessageFailureCommand implements ICommand {
   constructor(
     public user: IUserToken,
     public readonly props: HandleSlackMessageFailureProps,

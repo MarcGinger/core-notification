@@ -50,7 +50,7 @@ export class SlackMessageEventSubscriptionManager
   /**
    * Initialize the projection on module startup
    */
-  async onModuleInit(): Promise<void> {
+  onModuleInit(): void {
     try {
       const logContext = CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
         'SlackMessageEventSubscriptionManager',
@@ -62,7 +62,7 @@ export class SlackMessageEventSubscriptionManager
         'Starting message projection manager initialization',
       );
 
-      await this.startProjection();
+      this.startProjection();
 
       this.logger.log(
         logContext,
@@ -105,7 +105,7 @@ export class SlackMessageEventSubscriptionManager
   /**
    * Start the message projection with catchup and subscription
    */
-  async startProjection(): Promise<void> {
+  startProjection(): void {
     const logContext = CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
       'SlackMessageEventSubscriptionManager',
       'startProjection',
@@ -137,11 +137,12 @@ export class SlackMessageEventSubscriptionManager
 
       this.logger.log(
         setupContext,
-        'Setting up EventStore subscription for slack.message.created.v1 events',
+        'Setting up EventStore subscription for slack.message.created.v1 events (live events only)',
       );
 
-      // Set up the projection with event handler
-      await this.eventOrchestration.setupProjection(
+      // Set up live subscription only (skip catchup to prevent reprocessing historical events)
+      // We don't want to reprocess all historical Slack messages on startup
+      this.eventOrchestration.subscribeLiveOnly(
         streamPattern,
         (event: CreateMessageProps, meta: EventStoreMetaProps) => {
           void this.handleMessageEvent(event, meta);
@@ -268,7 +269,7 @@ export class SlackMessageEventSubscriptionManager
 
     this.stopProjection();
     await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds
-    await this.startProjection();
+    this.startProjection();
   }
 
   /**

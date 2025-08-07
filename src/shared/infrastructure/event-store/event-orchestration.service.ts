@@ -13,6 +13,7 @@ import { DomainEvent, serializeDomainEvent } from 'src/shared/domain';
 import { ILogger } from 'src/shared/logger';
 import { EsdbEventStore } from './esdb-event-store';
 import { EventStoreMetaProps } from './event-store.model';
+import { END } from '@eventstore/db-client';
 
 @Injectable()
 export class EventOrchestrationService {
@@ -110,5 +111,35 @@ export class EventOrchestrationService {
       fromSequence: revision,
       onEvent: handler,
     });
+  }
+
+  /**
+   * Subscribe to live events only, skipping catchup of historical events.
+   * This prevents reprocessing of historical events that could cause infinite loops.
+   */
+  subscribeLiveOnly<T>(
+    stream: string,
+    handler: (event: T, meta: EventStoreMetaProps) => void,
+  ): void {
+    // Use the EventStore client directly to specify END position
+    this.esdb['client']
+      .subscribeToStream(stream, {
+        fromRevision: END, // Start from current position, not beginning
+        resolveLinkTos: true,
+      })
+      .on('data', (resolved) => {
+        if (!resolved.event) return;
+
+        const evt = resolved.event.data as T;
+        const eventRevision = resolved.event.revision;
+
+        const metadata: EventStoreMetaProps = {
+          ...(resolved.event.metadata as unknown as EventStoreMetaProps),
+          stream: resolved.event.streamId,
+          revision: eventRevision,
+        };
+
+        handler(evt, metadata);
+      });
   }
 }

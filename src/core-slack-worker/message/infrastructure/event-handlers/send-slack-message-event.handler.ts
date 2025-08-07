@@ -9,28 +9,27 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
+import { CommandBus } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
 import { EventStoreMetaProps } from 'src/shared/infrastructure/event-store';
 import { ILogger } from 'src/shared/logger';
-import {
-  RenderMessageTemplateUseCase,
-  SendSlackMessageUseCase,
-} from '../../application/usecases';
 import { Message } from '../../domain/aggregates';
 import { MessageStatusEnum } from '../../domain/entities';
 import { MessageCreatedEvent } from '../../domain/events';
 import { CreateMessageProps } from '../../domain/properties';
-import { SlackMessageJobData } from '../processors/slack-message.processor';
 import { MessageRepository } from '../repositories';
 import { ProcessedEventRepository } from 'src/shared/infrastructure/event-processing';
-import { SlackMessageQueueService } from '../services/slack-message-queue.service';
+import {
+  RenderMessageTemplateCommand,
+  QueueSlackMessageCommand,
+} from '../../application/commands';
 
 /**
  * Send Slack Message Event Handler responsible for processing
- * MessageCreatedEvent events and creating commands.
+ * MessageCreatedEvent events and creating queue commands without new message creation.
  *
  * This handler bridges the event-driven flow to the command pattern
- * by listening to MessageCreatedEvent and executing CreateSendSlackMessageCommand.
+ * by listening to MessageCreatedEvent and executing QueueSlackMessageCommand directly.
  */
 @Injectable()
 export class SendSlackMessageEventHandler {
@@ -39,10 +38,8 @@ export class SendSlackMessageEventHandler {
 
   constructor(
     @Inject('ILogger') private readonly logger: ILogger,
-    private readonly sendSlackMessageUseCase: SendSlackMessageUseCase,
-    private readonly renderMessageTemplateUseCase: RenderMessageTemplateUseCase,
+    private readonly commandBus: CommandBus,
     private readonly processedEventRepository: ProcessedEventRepository,
-    private readonly slackMessageQueueService: SlackMessageQueueService,
     private readonly messageRepository: MessageRepository,
   ) {
     // Create a system user for operations
@@ -202,7 +199,7 @@ export class SendSlackMessageEventHandler {
         const now = new Date();
 
         if (scheduledDate > now) {
-          // This is a scheduled message - handle via BullMQ with delay
+          // This is a scheduled message - handle via QueueSlackMessageCommand
           await this.handleScheduledMessage(
             tenantUser,
             eventData,
@@ -240,13 +237,15 @@ export class SendSlackMessageEventHandler {
       // Render message using template if templateCode is provided
       if (eventData.templateCode) {
         try {
-          renderedMessage = await this.renderMessageTemplateUseCase.execute({
+          const renderCommand = new RenderMessageTemplateCommand({
             templateCode: eventData.templateCode,
             payload: eventData.payload,
             channel: eventData.channel,
             tenant,
             configCode: eventData.configCode,
+            correlationId: eventData.correlationId || 'unknown',
           });
+          renderedMessage = await this.commandBus.execute(renderCommand);
         } catch (error) {
           this.logger.warn(
             {
@@ -263,17 +262,19 @@ export class SendSlackMessageEventHandler {
         renderedMessage = eventData.renderedMessage;
       }
 
-      const slackDeliveryData = {
-        messageId: meta.aggregateId || 'unknown', // meta.aggregateId is the aggregate ID
-        tenant,
-        channel: eventData.channel,
-        renderedMessage,
-        correlationId: eventData.correlationId || 'unknown',
+      // Execute Slack delivery via queue command (no new message creation)
+      const queueCommand = new QueueSlackMessageCommand({
+        tenant: tenant || 'unknown',
         configCode: eventData.configCode,
-      };
-
-      // Directly execute Slack delivery use case (no command needed)
-      await this.sendSlackMessageUseCase.execute(tenantUser, slackDeliveryData);
+        channel: eventData.channel,
+        templateCode: eventData.templateCode,
+        payload: eventData.payload,
+        renderedMessage: renderedMessage,
+        scheduledAt: eventData.scheduledAt,
+        correlationId: eventData.correlationId || 'unknown',
+        priority: 1,
+      });
+      await this.commandBus.execute(queueCommand);
 
       // Mark event as processed to prevent future duplicates
       if (meta.revision !== undefined) {
@@ -378,7 +379,7 @@ export class SendSlackMessageEventHandler {
   }
 
   /**
-   * Handle scheduled message by adding it to BullMQ for delayed processing
+   * Handle scheduled message by using QueueSlackMessageCommand
    */
   private async handleScheduledMessage(
     user: IUserToken,
@@ -397,36 +398,52 @@ export class SendSlackMessageEventHandler {
         delay,
         tenant: user.tenant,
       },
-      'Scheduling Slack message for future delivery via BullMQ',
+      'Scheduling Slack message for future delivery via QueueSlackMessageCommand',
     );
 
     try {
       // Render the message template to get the final Slack message
-      const renderedMessage = await this.renderMessageTemplateUseCase.execute({
-        templateCode: eventData.templateCode,
-        configCode: eventData.configCode,
-        payload: eventData.payload,
-        channel: eventData.channel,
+      let renderedMessage = 'Message content'; // Default fallback
+
+      if (eventData.templateCode) {
+        try {
+          const renderCommand = new RenderMessageTemplateCommand({
+            templateCode: eventData.templateCode,
+            payload: eventData.payload,
+            channel: eventData.channel,
+            tenant: user.tenant || 'unknown',
+            configCode: eventData.configCode,
+            correlationId: eventData.correlationId || 'unknown',
+          });
+          renderedMessage = await this.commandBus.execute(renderCommand);
+        } catch (error) {
+          this.logger.warn(
+            {
+              templateCode: eventData.templateCode,
+              tenant: user.tenant,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            },
+            'Failed to render message template for scheduled message - using fallback',
+          );
+        }
+      } else if (eventData.renderedMessage) {
+        renderedMessage = eventData.renderedMessage;
+      }
+
+      // Queue the message using QueueSlackMessageCommand
+      const queueCommand = new QueueSlackMessageCommand({
         tenant: user.tenant || 'unknown',
+        configCode: eventData.configCode,
+        channel: eventData.channel,
+        templateCode: eventData.templateCode,
+        payload: eventData.payload,
+        renderedMessage: renderedMessage,
+        scheduledAt: scheduledDate,
+        correlationId: eventData.correlationId || 'unknown',
+        priority: 1, // Normal priority
       });
 
-      // Create the job data for BullMQ processing
-      const jobData: SlackMessageJobData = {
-        messageId: meta.aggregateId,
-        tenant: user.tenant || 'unknown',
-        channel: eventData.channel,
-        renderedMessage: renderedMessage,
-        correlationId: eventData.correlationId || 'unknown',
-        configCode: eventData.configCode,
-        // Default priority - could be enhanced based on eventData later
-        priority: 'normal',
-      };
-
-      // Schedule the message using the SlackMessageQueueService
-      await this.slackMessageQueueService.scheduleSlackMessage(
-        jobData,
-        scheduledDate,
-      );
+      await this.commandBus.execute(queueCommand);
 
       // Update the message status to SCHEDULED to emit MessageScheduledEvent
       try {
@@ -445,7 +462,7 @@ export class SendSlackMessageEventHandler {
                 ? statusUpdateError.message
                 : 'Unknown error',
           },
-          'Failed to update message status to SCHEDULED - event not emitted but BullMQ scheduling succeeded',
+          'Failed to update message status to SCHEDULED - event not emitted but message scheduling succeeded',
         );
       }
 
@@ -469,11 +486,10 @@ export class SendSlackMessageEventHandler {
           tenant: user.tenant,
           error: error instanceof Error ? error.message : 'Unknown error',
         },
-        'Failed to schedule Slack message via BullMQ - will fall back to immediate processing',
+        'Failed to schedule Slack message via QueueSlackMessageCommand - will fall back to immediate processing',
       );
 
       // If scheduling fails, fall back to immediate processing
-      // This ensures the message is still delivered even if BullMQ is unavailable
       this.logger.warn(
         {
           messageId: meta.aggregateId,
@@ -482,28 +498,50 @@ export class SendSlackMessageEventHandler {
         'Falling back to immediate processing due to scheduling failure',
       );
 
-      // Process immediately as fallback - create the delivery data and process via use case
+      // Process immediately as fallback using SendSlackMessageCommand
       try {
-        const renderedMessage = await this.renderMessageTemplateUseCase.execute(
-          {
-            templateCode: eventData.templateCode,
-            configCode: eventData.configCode,
-            payload: eventData.payload,
-            channel: eventData.channel,
-            tenant: user.tenant || 'unknown',
-          },
-        );
+        let renderedMessage = 'Message content'; // Default fallback
 
-        const slackDeliveryData = {
-          messageId: meta.aggregateId,
+        if (eventData.templateCode) {
+          try {
+            const renderCommand = new RenderMessageTemplateCommand({
+              templateCode: eventData.templateCode,
+              payload: eventData.payload,
+              channel: eventData.channel,
+              tenant: user.tenant || 'unknown',
+              configCode: eventData.configCode,
+              correlationId: eventData.correlationId || 'unknown',
+            });
+            renderedMessage = await this.commandBus.execute(renderCommand);
+          } catch (renderError) {
+            this.logger.warn(
+              {
+                templateCode: eventData.templateCode,
+                error:
+                  renderError instanceof Error
+                    ? renderError.message
+                    : 'Unknown error',
+              },
+              'Failed to render template in fallback - using default message',
+            );
+          }
+        } else if (eventData.renderedMessage) {
+          renderedMessage = eventData.renderedMessage;
+        }
+
+        const queueCommand = new QueueSlackMessageCommand({
           tenant: user.tenant || 'unknown',
-          channel: eventData.channel,
-          renderedMessage: renderedMessage,
-          correlationId: eventData.correlationId || 'unknown',
           configCode: eventData.configCode,
-        };
+          channel: eventData.channel,
+          templateCode: eventData.templateCode,
+          payload: eventData.payload,
+          renderedMessage: renderedMessage,
+          scheduledAt: eventData.scheduledAt,
+          correlationId: eventData.correlationId || 'unknown',
+          priority: 1,
+        });
 
-        await this.sendSlackMessageUseCase.execute(user, slackDeliveryData);
+        await this.commandBus.execute(queueCommand);
       } catch (fallbackError) {
         this.logger.error(
           {

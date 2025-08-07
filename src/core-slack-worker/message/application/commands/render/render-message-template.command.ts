@@ -8,6 +8,8 @@
  * Confidential and proprietary.
  */
 
+import { ICommand } from '@nestjs/cqrs';
+
 /**
  * Command for rendering message templates with provided payload data
  */
@@ -20,6 +22,6 @@ export interface RenderMessageTemplateProps {
   correlationId: string;
 }
 
-export class RenderMessageTemplateCommand {
+export class RenderMessageTemplateCommand implements ICommand {
   constructor(public readonly props: RenderMessageTemplateProps) {}
 }

@@ -8,6 +8,8 @@
  * Confidential and proprietary.
  */
 
+import { ICommand } from '@nestjs/cqrs';
+
 /**
  * Command for queueing slack messages for background processing
  */
@@ -23,6 +25,6 @@ export interface QueueSlackMessageProps {
   priority?: number;
 }
 
-export class QueueSlackMessageCommand {
+export class QueueSlackMessageCommand implements ICommand {
   constructor(public readonly props: QueueSlackMessageProps) {}
 }
