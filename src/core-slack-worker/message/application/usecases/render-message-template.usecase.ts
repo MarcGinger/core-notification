@@ -66,17 +66,9 @@ export class RenderMessageTemplateUseCase {
 
     try {
       // Check if template rendering is needed using domain service
-      if (
-        !this.messageTemplateDomainService.shouldRenderTemplate(
-          props.templateCode,
-          props.payload,
-        )
-      ) {
+      if (!this.messageTemplateDomainService.shouldRenderTemplate(props)) {
         const defaultMessage =
-          this.messageTemplateDomainService.generateDefaultMessage(
-            props.channel,
-            props.configCode,
-          );
+          this.messageTemplateDomainService.generateDefaultMessage(props);
 
         // Success logging with default message context
         const successContext =
@@ -146,10 +138,7 @@ export class RenderMessageTemplateUseCase {
           `Rendered message failed validation - using default message: templateCode '${props.templateCode}'`,
         );
 
-        return this.messageTemplateDomainService.generateDefaultMessage(
-          props.channel,
-          props.configCode,
-        );
+        return this.messageTemplateDomainService.generateDefaultMessage(props);
       }
 
       // Success logging with rendered message context
@@ -204,10 +193,7 @@ export class RenderMessageTemplateUseCase {
       );
 
       // Fall back to default message on any error
-      return this.messageTemplateDomainService.generateDefaultMessage(
-        props.channel,
-        props.configCode,
-      );
+      return this.messageTemplateDomainService.generateDefaultMessage(props);
     }
   }
 

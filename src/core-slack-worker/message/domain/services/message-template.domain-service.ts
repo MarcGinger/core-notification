@@ -9,6 +9,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import { IMessage } from '../entities';
 
 /**
  * Domain service for message template rendering business logic.
@@ -58,12 +59,10 @@ export class MessageTemplateDomainService {
    * @param payload - The data payload
    * @returns boolean - Whether rendering is needed
    */
-  shouldRenderTemplate(
-    templateCode?: string,
-    payload?: Record<string, any>,
-  ): boolean {
+  shouldRenderTemplate(props: IMessage): boolean {
     return (
-      this.validateTemplateCode(templateCode) && this.validatePayload(payload)
+      this.validateTemplateCode(props.templateCode) &&
+      this.validatePayload(props.payload)
     );
   }
 
@@ -105,9 +104,9 @@ export class MessageTemplateDomainService {
    * @param configCode - The configuration code
    * @returns string - A default message
    */
-  generateDefaultMessage(channel: string, configCode?: string): string {
-    const configPart = configCode ? ` (${configCode})` : '';
-    return `Message for ${channel}${configPart}`;
+  generateDefaultMessage(message: IMessage): string {
+    const configPart = message.configCode ? ` (${message.configCode})` : '';
+    return `Message for ${message.channel}${configPart} => ${JSON.stringify(message.payload) || '[No Text]'} `;
   }
 
   /**
