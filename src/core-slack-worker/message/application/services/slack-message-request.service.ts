@@ -8,13 +8,13 @@
  * Confidential and proprietary.
  */
 
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
-import { ILogger } from 'src/shared/logger';
 import { IUserToken } from 'src/shared/auth';
-import { CreateMessageCommand } from '../commands/create/create-message.command';
+import { ILogger } from 'src/shared/logger';
 import { v4 as uuidv4 } from 'uuid';
-import { SlackMessageRequestDto } from '../dtos/slack-message-request.dto';
+import { CreateMessageProps } from '../../domain/properties';
+import { CreateMessageCommand } from '../commands/create/create-message.command';
 
 /**
  * Service for handling Slack message requests from external services
@@ -40,7 +40,7 @@ export class SlackMessageRequestService {
    */
   async requestSlackMessage(
     user: IUserToken,
-    request: SlackMessageRequestDto,
+    request: CreateMessageProps,
   ): Promise<string> {
     const correlationId = request.correlationId || uuidv4();
     const tenant = user.tenant || user.tenant_id || 'default';
@@ -102,7 +102,7 @@ export class SlackMessageRequestService {
    */
   async requestBulkSlackMessages(
     user: IUserToken,
-    requests: SlackMessageRequestDto[],
+    requests: CreateMessageProps[],
   ): Promise<string[]> {
     const correlationIds: string[] = [];
 
@@ -146,7 +146,7 @@ export class SlackMessageRequestService {
    */
   async scheduleSlackMessage(
     user: IUserToken,
-    request: Omit<SlackMessageRequestDto, 'scheduledAt'>,
+    request: Omit<CreateMessageProps, 'scheduledAt'>,
     scheduledAt: Date,
   ): Promise<string> {
     const now = new Date();
@@ -165,7 +165,7 @@ export class SlackMessageRequestService {
    */
   async requestUrgentSlackMessage(
     user: IUserToken,
-    request: Omit<SlackMessageRequestDto, 'priority'>,
+    request: Omit<CreateMessageProps, 'priority'>,
   ): Promise<string> {
     return this.requestSlackMessage(user, {
       ...request,
@@ -176,7 +176,7 @@ export class SlackMessageRequestService {
   /**
    * Validate the Slack message request
    */
-  private validateRequest(request: SlackMessageRequestDto): void {
+  private validateRequest(request: CreateMessageProps): void {
     if (!request.channel) {
       throw new Error('Channel is required');
     }
