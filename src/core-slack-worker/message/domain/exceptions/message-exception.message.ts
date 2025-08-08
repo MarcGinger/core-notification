@@ -283,4 +283,20 @@ export const MessageExceptionMessage: Record<string, IException> = {
     statusCode: `400`,
     domain: `true`,
   },
+  invalidScheduledAtDate: {
+    message: `Invalid scheduled date provided`,
+    description: `The scheduled date must be a valid Date object and not NaN`,
+    code: `INVALID_SCHEDULED_AT_DATE`,
+    exception: `MessageDomainException`,
+    statusCode: `400`,
+    domain: `true`,
+  },
+  scheduledAtMustBeInFuture: {
+    message: `Scheduled date must be in the future`,
+    description: `The scheduled date must be after the current time`,
+    code: `SCHEDULED_AT_MUST_BE_IN_FUTURE`,
+    exception: `MessageDomainException`,
+    statusCode: `400`,
+    domain: `true`,
+  },
 };

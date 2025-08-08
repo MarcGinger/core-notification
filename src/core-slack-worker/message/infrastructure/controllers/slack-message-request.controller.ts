@@ -131,4 +131,87 @@ export class SlackMessageRequestController {
       message: 'Slack message requests queued for processing',
     };
   }
+
+  /**
+   * Schedule a Slack message for future delivery
+   */
+  @Post('schedule')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Schedule a Slack message for future delivery',
+    description:
+      'Schedules a Slack message to be sent at a specific future time.',
+  })
+  @ApiResponse({
+    status: HttpStatus.ACCEPTED,
+    description: 'Message scheduled successfully',
+  })
+  async scheduleMessage(
+    @Body()
+    body: MessageCreateRequest & { scheduledAt: string },
+  ) {
+    // TODO: Extract user from JWT token using proper decorator
+    const mockUser: IUserToken = {
+      sub: 'user-123',
+      name: 'Test User',
+      email: 'test@example.com',
+      tenant: 'xxx',
+    };
+
+    const { scheduledAt, ...request } = body;
+    const scheduledDate = new Date(scheduledAt);
+    console.log(mockUser, request, scheduledDate);
+    const correlationId =
+      await this.slackMessageRequestService.scheduleSlackMessage(
+        mockUser,
+        request,
+        scheduledDate,
+      );
+
+    return {
+      correlationId,
+      scheduledAt: scheduledDate.toISOString(),
+      status: 'scheduled',
+      message: 'Slack message scheduled for future delivery',
+    };
+  }
+
+  /**
+   * Request an urgent Slack message with high priority
+   */
+  @Post('urgent')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Request an urgent Slack message with high priority',
+    description:
+      'Submits a high-priority request to send a Slack message immediately.',
+  })
+  @ApiResponse({
+    status: HttpStatus.ACCEPTED,
+    description: 'Urgent message request accepted and prioritized',
+  })
+  async requestUrgentMessage(
+    @Body() request: Omit<MessageCreateRequest, 'priority'>,
+  ) {
+    // TODO: Extract user from JWT token using proper decorator
+    const mockUser: IUserToken = {
+      sub: 'user-123',
+      name: 'Test User',
+      email: 'test@example.com',
+      tenant: 'xxx',
+    };
+
+    const correlationId =
+      await this.slackMessageRequestService.requestUrgentSlackMessage(
+        mockUser,
+        request,
+      );
+
+    return {
+      correlationId,
+      priority: 'critical',
+      status: 'accepted',
+      message: 'Urgent Slack message request prioritized for processing',
+    };
+  }
 }

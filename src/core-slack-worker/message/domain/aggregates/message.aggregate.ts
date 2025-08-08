@@ -24,6 +24,7 @@ import {
 import { MessageDomainException, MessageExceptionMessage } from '../exceptions';
 import { MessageProps } from '../properties';
 import { MessageIdentifier } from '../value-objects';
+import { ScheduledAt } from '../value-objects/scheduled-at';
 
 export class Message
   extends AggregateRoot
@@ -37,7 +38,7 @@ export class Message
   private _renderedMessage?: string;
   private _status: MessageStatusEnum;
   private _priority?: number;
-  private _scheduledAt?: Date;
+  private _scheduledAt?: ScheduledAt;
   private _sentAt?: Date;
   private _failureReason?: string;
   private _correlationId?: string;
@@ -96,7 +97,7 @@ export class Message
     return this._priority;
   }
 
-  public get scheduledAt(): Date | undefined {
+  public get scheduledAt(): ScheduledAt | undefined {
     return this._scheduledAt;
   }
 
@@ -132,7 +133,7 @@ export class Message
       renderedMessage: entity.renderedMessage,
       status: entity.status,
       priority: entity.priority,
-      scheduledAt: entity.scheduledAt,
+      scheduledAt: ScheduledAt.create(entity.scheduledAt),
       sentAt: entity.sentAt,
       failureReason: entity.failureReason,
       correlationId: entity.correlationId,
@@ -152,7 +153,7 @@ export class Message
       renderedMessage: this._renderedMessage,
       status: this._status,
       priority: this._priority,
-      scheduledAt: this._scheduledAt,
+      scheduledAt: this._scheduledAt?.getValue(),
       sentAt: this._sentAt,
       failureReason: this._failureReason,
       correlationId: this._correlationId,
@@ -196,7 +197,7 @@ export class Message
     const scheduledProps = {
       ...props,
       status: MessageStatusEnum.SCHEDULED,
-      scheduledAt,
+      scheduledAt: ScheduledAt.create(scheduledAt),
     };
 
     const message = new Message(scheduledProps);
@@ -339,7 +340,7 @@ export class Message
     }
 
     const oldScheduledAt = this._scheduledAt;
-    this._scheduledAt = scheduledAt;
+    this._scheduledAt = ScheduledAt.create(scheduledAt);
 
     // Emit event only if value actually changed
     if (oldScheduledAt !== this._scheduledAt && emitEvent) {
@@ -574,25 +575,27 @@ export class Message
             user,
             this.getId(),
             messageDto,
-            this._scheduledAt || now,
+            this._scheduledAt?.getValue() || now,
             previousStatus,
           ),
         );
         break;
 
-      case MessageStatusEnum.RETRYING:
+      case MessageStatusEnum.RETRYING: {
+        const delay = new Date(Date.now() + 60000); // default 1 minute retry
         this.apply(
           new MessageRetryingEvent(
             user,
             this.getId(),
             messageDto,
             this._retryCount,
-            this._scheduledAt || new Date(Date.now() + 60000), // default 1 minute retry
+            delay,
             previousStatus,
             this._failureReason,
           ),
         );
         break;
+      }
 
       default:
         // For any other status changes, fall back to generic event
@@ -651,7 +654,7 @@ export class Message
       );
     }
 
-    if (!this._retryCount) {
+    if (this._scheduledAt) {
       // throw new MessageDomainException(
       //   MessageExceptionMessage.fieldRetryCountRequired,
       // );

@@ -9,12 +9,13 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { IUserToken } from 'src/shared/auth';
 import { randomUUID } from 'crypto';
+import { IUserToken } from 'src/shared/auth';
 import { Message } from '../aggregates';
+import { MessageStatusEnum } from '../entities';
 import { CreateMessageProps } from '../properties';
 import { MessageIdentifier } from '../value-objects';
-import { MessageStatusEnum } from '../entities';
+import { ScheduledAt } from '../value-objects/scheduled-at';
 
 /**
  * Domain service for handling complex business operations that span multiple aggregates
@@ -64,7 +65,7 @@ export class MessageDomainService {
       templateCode: createData.templateCode,
       payload: createData.payload,
       status: MessageStatusEnum.PENDING,
-      scheduledAt: createData.scheduledAt,
+      scheduledAt: ScheduledAt.create(createData.scheduledAt),
       sentAt: new Date(),
       retryCount: 0,
     });

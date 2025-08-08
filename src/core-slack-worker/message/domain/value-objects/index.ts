@@ -11,3 +11,4 @@
 export * from './message-identifier';
 export * from './message-projection-keys';
 export * from './message.domain';
+export * from './scheduled-at';

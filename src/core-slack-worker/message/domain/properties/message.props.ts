@@ -10,6 +10,7 @@
 
 import { MessageStatusEnum } from '../entities';
 import { MessageIdentifier } from '../value-objects';
+import { ScheduledAt } from '../value-objects/scheduled-at';
 
 // generate-domain-properties
 export interface MessageProps {
@@ -21,7 +22,7 @@ export interface MessageProps {
   readonly renderedMessage?: string;
   readonly status: MessageStatusEnum;
   readonly priority?: number;
-  readonly scheduledAt?: Date;
+  readonly scheduledAt?: ScheduledAt;
   readonly sentAt?: Date;
   readonly failureReason?: string;
   readonly correlationId?: string;
