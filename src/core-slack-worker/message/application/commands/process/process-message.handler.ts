@@ -11,20 +11,20 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { handleCommandError } from 'src/shared/application/commands';
 import { MessageExceptionMessage } from '../../../domain/exceptions';
-import { MessageFailureUseCase } from '../../usecases';
-import { MessageFailureCommand } from './message-failure.command';
+import { ProcessMessageUseCase } from '../../usecases';
+import { ProcessMessageCommand } from './process-message.command';
 
-@CommandHandler(MessageFailureCommand)
-export class MessageFailureHandler
-  implements ICommandHandler<MessageFailureCommand, void>
+@CommandHandler(ProcessMessageCommand)
+export class ProcessMessageHandler
+  implements ICommandHandler<ProcessMessageCommand, void>
 {
-  constructor(private readonly MessageFailureUseCase: MessageFailureUseCase) {}
+  constructor(private readonly queueMessageUseCase: ProcessMessageUseCase) {}
 
-  async execute(command: MessageFailureCommand): Promise<void> {
+  async execute(command: ProcessMessageCommand): Promise<void> {
     const { user, props } = command;
 
     try {
-      await this.MessageFailureUseCase.execute(user, props);
+      await this.queueMessageUseCase.execute(user, props);
     } catch (error) {
       handleCommandError(error, null, MessageExceptionMessage.createError);
       throw error;

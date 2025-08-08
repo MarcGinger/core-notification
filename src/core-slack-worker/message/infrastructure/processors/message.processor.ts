@@ -15,7 +15,6 @@ import { IUserToken } from 'src/shared/auth';
 import { QUEUE_NAMES } from 'src/shared/infrastructure/bullmq';
 import { ILogger } from 'src/shared/logger';
 import { MessageService } from '../../application/services';
-import { ProcessMessageUseCase } from '../../application/usecases';
 
 /**
  * Job data interface for Message delivery
@@ -43,7 +42,6 @@ export interface MessageJobData {
 export class MessageProcessor extends WorkerHost {
   constructor(
     @Inject('ILogger') private readonly logger: ILogger,
-    private readonly processMessageUseCase: ProcessMessageUseCase,
     private readonly messageService: MessageService,
   ) {
     super();
@@ -147,7 +145,7 @@ export class MessageProcessor extends WorkerHost {
       };
 
       // Delegate to use case - all business logic is handled there
-      const result = await this.processMessageUseCase.execute(systemUser, {
+      const result = await this.messageService.processMessage(systemUser, {
         id: data.messageId,
         isRetry: data.isRetry,
         retryAttempt: data.retryAttempt || job.attemptsMade,
