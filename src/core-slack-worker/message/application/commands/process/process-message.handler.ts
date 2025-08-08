@@ -18,13 +18,13 @@ import { ProcessMessageCommand } from './process-message.command';
 export class ProcessMessageHandler
   implements ICommandHandler<ProcessMessageCommand, void>
 {
-  constructor(private readonly queueMessageUseCase: ProcessMessageUseCase) {}
+  constructor(private readonly processMessageUseCase: ProcessMessageUseCase) {}
 
   async execute(command: ProcessMessageCommand): Promise<void> {
     const { user, props } = command;
 
     try {
-      await this.queueMessageUseCase.execute(user, props);
+      await this.processMessageUseCase.execute(user, props);
     } catch (error) {
       handleCommandError(error, null, MessageExceptionMessage.createError);
       throw error;

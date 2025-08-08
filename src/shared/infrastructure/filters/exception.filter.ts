@@ -17,7 +17,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { IException } from '../../domain/exceptions';
+import { DomainException, IException } from '../../domain/exceptions';
 import { ILogger } from '../../logger';
 
 interface IPolicyResult {
@@ -30,9 +30,13 @@ interface IRequestWithPolicy extends Request {
   policyresult?: IPolicyResult;
 }
 
-interface IExceptionResponse extends IException {
+interface IExceptionResponse {
   timestamp: string;
   path: string;
+  message: string;
+  description: string;
+  code: string;
+  statusCode: number;
 }
 
 @Catch()
@@ -67,8 +71,9 @@ export class AllExceptionFilter implements ExceptionFilter {
     if (request.policyresult) {
       status = request.policyresult.status_code ?? status;
       message = {
+        ...message,
         message: request.policyresult.message ?? message.message,
-        errorCode: request.policyresult.error_code ?? message.errorCode,
+        code: request.policyresult.error_code ?? message.code,
       };
     }
 
@@ -76,6 +81,9 @@ export class AllExceptionFilter implements ExceptionFilter {
   }
 
   private getHttpStatus(exception: unknown): number {
+    if (exception instanceof DomainException) {
+      return exception.statusCode;
+    }
     if (exception instanceof HttpException) {
       return exception.getStatus();
     }
@@ -83,31 +91,82 @@ export class AllExceptionFilter implements ExceptionFilter {
   }
 
   private getErrorMessage(exception: unknown): IException {
+    // Handle domain exceptions first - they already have the proper IException structure
+    if (exception instanceof DomainException) {
+      return {
+        message: exception.message,
+        description: exception.description,
+        code: exception.code,
+        exception: exception.exception,
+        statusCode: exception.statusCode,
+        domain: exception.domain,
+      };
+    }
+
     if (exception instanceof HttpException) {
       const response = exception.getResponse();
 
       if (typeof response === 'string') {
-        return { message: response, statusCode: 400 };
+        return {
+          message: response,
+          description: 'HTTP Exception occurred',
+          code: 'HTTP_EXCEPTION',
+          exception: 'HttpException',
+          statusCode: exception.getStatus(),
+          domain: 'INFRASTRUCTURE',
+        };
       }
 
       if (typeof response === 'object' && response !== null) {
+        const responseObj = response as Record<string, unknown>;
         return {
-          message: (response as any).message ?? 'Unknown error',
+          message:
+            typeof responseObj.message === 'string'
+              ? responseObj.message
+              : 'Unknown error',
           description:
-            (response as any).description ?? 'No description provided',
-          code: (response as any).code ?? 'UNKNOWN_ERROR',
-          exception: (response as any).exception ?? 'HttpException',
-          statusCode: (response as any).statusCode ?? 400,
-          domain: (response as any).domain ?? 'INFRASTRUCTURE',
+            typeof responseObj.description === 'string'
+              ? responseObj.description
+              : 'No description provided',
+          code:
+            typeof responseObj.code === 'string'
+              ? responseObj.code
+              : 'UNKNOWN_ERROR',
+          exception:
+            typeof responseObj.exception === 'string'
+              ? responseObj.exception
+              : 'HttpException',
+          statusCode:
+            typeof responseObj.statusCode === 'number'
+              ? responseObj.statusCode
+              : exception.getStatus(),
+          domain:
+            typeof responseObj.domain === 'string'
+              ? responseObj.domain
+              : 'INFRASTRUCTURE',
         };
       }
     }
 
     if (exception instanceof Error) {
-      return { message: exception.message, errorCode: '' };
+      return {
+        message: exception.message,
+        description: 'Runtime error occurred',
+        code: 'RUNTIME_ERROR',
+        exception: 'Error',
+        statusCode: 500,
+        domain: 'INFRASTRUCTURE',
+      };
     }
 
-    return { message: 'Unknown error occurred', errorCode: '' };
+    return {
+      message: 'Unknown error occurred',
+      description: 'An unexpected error occurred',
+      code: 'UNKNOWN_ERROR',
+      exception: 'UnknownException',
+      statusCode: 500,
+      domain: 'INFRASTRUCTURE',
+    };
   }
 
   private buildErrorResponse(
@@ -120,13 +179,8 @@ export class AllExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url ?? '',
       message: message.message,
-
       description: message.description,
-      code: message.errorCode,
-      exception: 'AllExceptionFilter',
-      statusCode: status,
-      domain: 'true',
-      errorCode: message.errorCode,
+      code: message.code,
     };
   }
 
@@ -139,7 +193,7 @@ export class AllExceptionFilter implements ExceptionFilter {
     const logData = {
       method: request.method ?? 'UNKNOWN',
       status,
-      errorCode: message.errorCode || null,
+      errorCode: message.code || null,
       message: message.message || null,
       path: request.path ?? '',
     };

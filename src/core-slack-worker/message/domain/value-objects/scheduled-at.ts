@@ -5,14 +5,13 @@ export class ScheduledAt {
 
   private constructor(value?: Date) {
     if (value) {
-      // Check if the value is a valid date
-      if (!(value instanceof Date) || isNaN(value.getTime())) {
+      // Check if the date is valid
+      if (isNaN(value.getTime())) {
         throw new MessageDomainException(
           MessageExceptionMessage.invalidScheduledAtDate,
         );
       }
 
-      // Check if the date is in the future
       if (value.getTime() <= Date.now()) {
         throw new MessageDomainException(
           MessageExceptionMessage.scheduledAtMustBeInFuture,
@@ -24,12 +23,21 @@ export class ScheduledAt {
   }
 
   /**
-   * Factory method to create a ScheduledAt value object
-   * @param value optional date
-   * @returns ScheduledAt instance
+   * Factory method that accepts string, Date, or undefined
    */
-  public static create(value?: Date): ScheduledAt {
-    return new ScheduledAt(value);
+  public static create(value?: string | Date): ScheduledAt {
+    if (value === undefined) {
+      return new ScheduledAt(undefined);
+    }
+
+    let parsed: Date;
+    if (typeof value === 'string') {
+      parsed = new Date(value);
+    } else {
+      parsed = value;
+    }
+
+    return new ScheduledAt(parsed);
   }
 
   public getValue(): Date | undefined {
