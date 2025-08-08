@@ -9,24 +9,24 @@
  */
 
 import { CreateMessageUseCase } from './create-message.usecase';
+import { MessageFailureUseCase } from './message-failure.usecase';
+import { ProcessMessageUseCase } from './process-message.usecase';
 import { QueueMessageUseCase } from './queue-message.usecase';
-import { HandleSlackMessageFailureUseCase } from './handle-slack-message-failure.usecase';
 import { RenderMessageTemplateUseCase } from './render-message-template.usecase';
-import { SendSlackMessageUseCase } from './send-slack-message.usecase';
 
 // application/commands/index.ts
 export const MessageUseCases = [
   CreateMessageUseCase,
   QueueMessageUseCase,
-  HandleSlackMessageFailureUseCase,
+  MessageFailureUseCase,
   RenderMessageTemplateUseCase,
-  SendSlackMessageUseCase,
+  ProcessMessageUseCase,
 ];
 
 export {
   CreateMessageUseCase,
+  MessageFailureUseCase,
+  ProcessMessageUseCase,
   QueueMessageUseCase,
-  HandleSlackMessageFailureUseCase,
   RenderMessageTemplateUseCase,
-  SendSlackMessageUseCase,
 };

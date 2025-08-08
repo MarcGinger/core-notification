@@ -1,0 +1,82 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "start:dev",
+      "group": "build",
+      "label": "npm: start:dev",
+      "detail": "nest start --watch",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "typescript",
+        "pattern": {
+          "regexp": "^([^\\s].*)\\((\\d+|\\d+,\\d+|\\d+,\\d+,\\d+,\\d+)\\):\\s+(error|warning|info)\\s+(TS\\d+)\\s*:\\s*(.*)$",
+          "file": 1,
+          "location": 2,
+          "severity": 3,
+          "code": 4,
+          "message": 5
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*webpack.*",
+          "endsPattern": "^.*webpack: Compiled successfully.*"
+        }
+      }
+    },
+    {
+      "type": "npm",
+      "script": "start:debug",
+      "group": "build",
+      "label": "npm: start:debug",
+      "detail": "nest start --debug --watch",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "typescript",
+        "pattern": {
+          "regexp": "^([^\\s].*)\\((\\d+|\\d+,\\d+|\\d+,\\d+,\\d+,\\d+)\\):\\s+(error|warning|info)\\s+(TS\\d+)\\s*:\\s*(.*)$",
+          "file": 1,
+          "location": 2,
+          "severity": 3,
+          "code": 4,
+          "message": 5
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*webpack.*",
+          "endsPattern": "^.*Debugger listening on.*"
+        }
+      }
+    },
+    {
+      "type": "shell",
+      "label": "tsc: build",
+      "command": "npx",
+      "args": ["tsc", "-p", "tsconfig.build.json"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "type": "npm",
+      "script": "test",
+      "group": "test",
+      "label": "npm: test",
+      "detail": "jest"
+    },
+    {
+      "type": "npm",
+      "script": "test:watch",
+      "group": "test",
+      "label": "npm: test:watch",
+      "detail": "jest --watch",
+      "isBackground": true
+    }
+  ]
+}

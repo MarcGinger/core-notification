@@ -9,22 +9,12 @@
  */
 
 import { ICommand } from '@nestjs/cqrs';
+import { WorkerMessageProps } from '../../../domain/properties';
 import { IUserToken } from 'src/shared/auth';
 
-export interface HandleSlackMessageFailureProps {
-  messageId: string;
-  tenant: string;
-  channel: string;
-  correlationId: string;
-  configCode: string;
-  failureReason: string;
-  retryCount: number;
-  willRetry: boolean;
-}
-
-export class HandleSlackMessageFailureCommand implements ICommand {
+export class MessageFailureCommand implements ICommand {
   constructor(
     public user: IUserToken,
-    public readonly props: HandleSlackMessageFailureProps,
+    public readonly props: WorkerMessageProps,
   ) {}
 }

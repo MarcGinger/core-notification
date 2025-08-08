@@ -8,4 +8,4 @@
  * Confidential and proprietary.
  */
 
-export * from './slack-message.processor';
+export * from './message.processor';

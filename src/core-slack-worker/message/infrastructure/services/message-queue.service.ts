@@ -8,11 +8,11 @@
  * Confidential and proprietary.
  */
 
-import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
+import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { QUEUE_NAMES } from 'src/shared/infrastructure/bullmq';
-import { SlackMessageJobData } from '../processors/slack-message.processor';
+import { MessageJobData } from '../processors/message.processor';
 
 /**
  * Priority levels for Slack message jobs
@@ -30,17 +30,17 @@ export const SLACK_MESSAGE_PRIORITIES = {
  * Handles job creation, scheduling, and queue management for Slack messages
  */
 @Injectable()
-export class SlackMessageQueueService {
+export class MessageQueueService {
   constructor(
     @InjectQueue(QUEUE_NAMES.SLACK_MESSAGE)
-    private readonly slackMessageQueue: Queue<SlackMessageJobData>,
+    private readonly slackMessageQueue: Queue<MessageJobData>,
   ) {}
 
   /**
    * Add a standard Slack message job to the queue
    */
   async addSlackMessageJob(
-    messageData: SlackMessageJobData,
+    messageData: MessageJobData,
     options?: {
       priority?: number;
       delay?: number;
@@ -63,7 +63,7 @@ export class SlackMessageQueueService {
   /**
    * Add an urgent/high-priority Slack message job
    */
-  async addUrgentSlackMessageJob(messageData: SlackMessageJobData) {
+  async addUrgentSlackMessageJob(messageData: MessageJobData) {
     return this.slackMessageQueue.add('send-slack-message', messageData, {
       priority: SLACK_MESSAGE_PRIORITIES.URGENT,
       delay: 0,
@@ -80,10 +80,7 @@ export class SlackMessageQueueService {
   /**
    * Schedule a Slack message for future delivery
    */
-  async scheduleSlackMessage(
-    messageData: SlackMessageJobData,
-    scheduledAt: Date,
-  ) {
+  async scheduleSlackMessage(messageData: MessageJobData, scheduledAt: Date) {
     const delay = scheduledAt.getTime() - Date.now();
 
     if (delay <= 0) {
@@ -103,7 +100,7 @@ export class SlackMessageQueueService {
    * Add multiple Slack message jobs in bulk
    */
   async addBulkSlackMessageJobs(
-    messages: SlackMessageJobData[],
+    messages: MessageJobData[],
     options?: {
       priority?: number;
       batchSize?: number;
@@ -136,11 +133,8 @@ export class SlackMessageQueueService {
   /**
    * Retry a failed Slack message job with enhanced options
    */
-  async retryFailedMessage(
-    messageData: SlackMessageJobData,
-    retryAttempt: number,
-  ) {
-    const enhancedData: SlackMessageJobData = {
+  async retryFailedMessage(messageData: MessageJobData, retryAttempt: number) {
+    const enhancedData: MessageJobData = {
       ...messageData,
       isRetry: true,
       retryAttempt,

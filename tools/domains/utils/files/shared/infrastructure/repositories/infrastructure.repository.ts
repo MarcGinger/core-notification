@@ -1,8 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ILogger } from 'src/shared/logger';
 import { IUserToken } from 'src/shared/auth';
 import { IException } from 'src/shared/domain/exceptions';
+import { ILogger } from 'src/shared/logger';
 
 const COMPONENT_NAME = 'DomainCommandRepository';
 /**
@@ -72,7 +72,7 @@ export abstract class InfrastructureRepository<
     operationId: string = `${this.constructor.name.toLowerCase()}-${method}-${Date.now()}`,
     logContext?: Record<string, unknown>,
   ): Record<string, unknown> {
-    const tenant = user?.tenant || 'core';
+    const tenant = user?.tenant || 'oooo';
 
     return {
       operationId,

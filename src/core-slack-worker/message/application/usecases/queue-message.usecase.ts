@@ -1,22 +1,18 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { v4 as uuidv4 } from 'uuid';
 import { handleCommandError } from 'src/shared/application/commands';
-import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
+import { IUserToken } from 'src/shared/auth';
 import {
   QUEUE_NAMES,
   QUEUE_PRIORITIES,
 } from 'src/shared/infrastructure/bullmq';
-import { MessageRepository } from '../../infrastructure/repositories';
+import { v4 as uuidv4 } from 'uuid';
+import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
 import { MessageExceptionMessage } from '../../domain/exceptions';
-import { MessageDomainService } from '../../domain/services';
-import { IUserToken } from 'src/shared/auth';
-import { CreateMessageProps } from '../../domain/properties';
-import { Message } from '../../domain/aggregates';
-import { MessageStatusEnum } from '../../domain/entities';
-import { RenderMessageTemplateUseCase } from './render-message-template.usecase';
 import { MessageFactory } from '../../domain/factories';
+import { UpdateMessageProps } from '../../domain/properties';
+import { MessageRepository } from '../../infrastructure/repositories';
 
 /**
  * Use case for queuing Slack messages for delivery.
@@ -35,8 +31,6 @@ export class QueueMessageUseCase {
   constructor(
     @InjectQueue(QUEUE_NAMES.SLACK_MESSAGE) private slackQueue: Queue,
     private readonly messageRepository: MessageRepository,
-    private readonly domainService: MessageDomainService,
-    private readonly renderMessageTemplateUseCase: RenderMessageTemplateUseCase,
   ) {}
 
   /**
@@ -48,7 +42,7 @@ export class QueueMessageUseCase {
    */
   async execute(
     user: IUserToken,
-    props: CreateMessageProps,
+    props: UpdateMessageProps,
   ): Promise<{ messageId: string; jobId: string }> {
     // Input validation first
     this.validateInput(user, props);
@@ -84,18 +78,8 @@ export class QueueMessageUseCase {
     );
 
     try {
-      // Render the message template
-      const renderedMessage = await this.renderMessageTemplateUseCase.execute(
-        user,
-        props,
-      );
-
       // Create message aggregate through domain service
-      const messageAggregate = MessageFactory.fromProps(
-        props,
-        renderedMessage,
-        correlationId,
-      );
+      const messageAggregate = MessageFactory.fromProps(props, correlationId);
 
       // Queue delivery job with appropriate priority and scheduling
       const jobOptions = {
@@ -116,8 +100,8 @@ export class QueueMessageUseCase {
         'deliver-slack-message',
         {
           messageId: messageAggregate.getId(),
+          tenant: user.tenant,
           channel: props.channel,
-          renderedMessage: renderedMessage,
           correlationId: correlationId,
           configCode: props.configCode,
         },
@@ -159,7 +143,7 @@ export class QueueMessageUseCase {
 
       this.logger.log(
         successContext,
-        `Successfully queued Slack message: messageId '${savedMessage.id}', jobId '${job.id}', correlationId '${props.correlationId}'`,
+        `Successfully queued Slack message: messageId '${savedMessage.id}', tenant '${user.tenant}', jobId '${job.id}', correlationId '${props.correlationId}'`,
       );
 
       return {
@@ -201,7 +185,7 @@ export class QueueMessageUseCase {
   /**
    * Validates input properties with enhanced logging
    */
-  private validateInput(user: IUserToken, props: CreateMessageProps): void {
+  private validateInput(user: IUserToken, props: UpdateMessageProps): void {
     // User validation
     if (!user) {
       const errorContext =

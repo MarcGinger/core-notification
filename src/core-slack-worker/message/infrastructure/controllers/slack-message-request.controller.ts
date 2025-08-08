@@ -9,19 +9,14 @@
  */
 
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Public } from 'nest-keycloak-connect';
 import { IUserToken } from 'src/shared/auth';
 import {
   SlackMessageRequestDto,
   SlackMessageRequestResponse,
 } from '../../application/dtos/slack-message-request.dto';
 import { SlackMessageRequestService } from '../../application/services/slack-message-request.service';
-import { Public } from 'nest-keycloak-connect';
 
 /**
  * Controller for handling Slack message requests from external services
@@ -63,7 +58,7 @@ export class SlackMessageRequestController {
       sub: 'user-123',
       name: 'Test User',
       email: 'test@example.com',
-      tenant: 'core', // This should come from the actual JWT
+      tenant: 'xxx', // This should come from the actual JWT
     };
 
     const correlationId =
@@ -122,7 +117,7 @@ export class SlackMessageRequestController {
       sub: 'user-123',
       name: 'Test User',
       email: 'test@example.com',
-      tenant: 'core',
+      tenant: 'xxx',
     };
 
     const correlationIds =
@@ -162,7 +157,7 @@ export class SlackMessageRequestController {
       sub: 'user-123',
       name: 'Test User',
       email: 'test@example.com',
-      tenant: 'core',
+      tenant: 'xxx',
     };
 
     const { scheduledAt, ...request } = body;
@@ -205,7 +200,7 @@ export class SlackMessageRequestController {
       sub: 'user-123',
       name: 'Test User',
       email: 'test@example.com',
-      tenant: 'core',
+      tenant: 'xxx',
     };
 
     const correlationId =

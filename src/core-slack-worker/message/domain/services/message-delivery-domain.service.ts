@@ -11,41 +11,41 @@
 import { Injectable } from '@nestjs/common';
 
 /**
- * Domain service for Slack delivery business rules and error classification
- * Contains the core business logic for determining how to handle Slack API errors
+ * Domain service for Message delivery business rules and error classification
+ * Contains the core business logic for determining how to handle Message API errors
  * and retry strategies based on domain knowledge.
  */
 @Injectable()
-export class SlackDeliveryDomainService {
+export class MessageDeliveryDomainService {
   /**
-   * Classifies a Slack API error as either permanent (don't retry) or retryable
-   * This encapsulates the business rules around which Slack errors should be retried
+   * Classifies a Message API error as either permanent (don't retry) or retryable
+   * This encapsulates the business rules around which Message errors should be retried
    */
-  classifySlackError(slackError: string): 'permanent' | 'retryable' {
+  classifyMessageError(messageError: string): 'permanent' | 'retryable' {
     // Business rules for permanent errors - these should never be retried
     const permanentErrors = [
       'channel_not_found', // Channel doesn't exist or bot doesn't have access
       'not_in_channel', // Bot not added to channel
       'cannot_dm_bot', // Cannot send DM to bot users
       'user_not_found', // User ID is invalid
-      'account_inactive', // Slack account is deactivated
+      'account_inactive', // Message account is deactivated
       'token_revoked', // OAuth token has been revoked
       'invalid_auth', // Authentication credentials are invalid
-      'msg_too_long', // Message exceeds Slack's length limits
+      'msg_too_long', // Message exceeds Message's length limits
     ];
 
-    if (permanentErrors.includes(slackError)) {
+    if (permanentErrors.includes(messageError)) {
       return 'permanent';
     }
 
     // Business rules for retryable errors
     const retryableErrors = [
       'ratelimited', // Rate limiting - can retry with backoff
-      'internal_error', // Slack internal error - temporary
-      'service_unavailable', // Slack service temporarily down
+      'internal_error', // Message internal error - temporary
+      'service_unavailable', // Message service temporarily down
     ];
 
-    if (retryableErrors.includes(slackError)) {
+    if (retryableErrors.includes(messageError)) {
       return 'retryable';
     }
 
@@ -61,13 +61,11 @@ export class SlackDeliveryDomainService {
   shouldRetryMessage(
     currentAttempt: number,
     maxAttempts: number,
-    priority: 'normal' | 'urgent' | 'critical',
+    priority: number = 1,
   ): boolean {
     // Business rule: urgent and critical messages get more retry attempts
     const effectiveMaxAttempts =
-      priority === 'urgent' || priority === 'critical'
-        ? Math.max(maxAttempts, 6)
-        : maxAttempts;
+      priority > 10 ? Math.max(maxAttempts, 6) : maxAttempts;
 
     return currentAttempt < effectiveMaxAttempts;
   }
@@ -93,7 +91,7 @@ export class SlackDeliveryDomainService {
    * This encapsulates the business knowledge of what each error means
    */
   generateUserFriendlyErrorMessage(
-    slackError: string,
+    messageError: string,
     channel: string,
   ): string {
     const errorMessages: Record<string, string> = {
@@ -101,13 +99,15 @@ export class SlackDeliveryDomainService {
       not_in_channel: `Bot is not added to channel "${channel}". Please add the bot to the channel or use user ID for DMs`,
       cannot_dm_bot: `Cannot send direct message to bot user "${channel}"`,
       user_not_found: `User "${channel}" not found. Please check the user ID format`,
-      account_inactive: `Slack account is inactive and cannot receive messages`,
-      token_revoked: `Slack authentication token has been revoked. Please reconfigure the integration`,
-      invalid_auth: `Slack authentication failed. Please check the bot token configuration`,
-      msg_too_long: `Message is too long for Slack. Please shorten the message content`,
+      account_inactive: `Message account is inactive and cannot receive messages`,
+      token_revoked: `Message authentication token has been revoked. Please reconfigure the integration`,
+      invalid_auth: `Message authentication failed. Please check the bot token configuration`,
+      msg_too_long: `Message is too long for Message. Please shorten the message content`,
     };
 
-    return errorMessages[slackError] || `Slack delivery failed: ${slackError}`;
+    return (
+      errorMessages[messageError] || `Message delivery failed: ${messageError}`
+    );
   }
 
   /**

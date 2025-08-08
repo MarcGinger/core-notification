@@ -11,22 +11,20 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { handleCommandError } from 'src/shared/application/commands';
 import { MessageExceptionMessage } from '../../../domain/exceptions';
-import { HandleSlackMessageFailureUseCase } from '../../usecases';
-import { HandleSlackMessageFailureCommand } from './handle-slack-message-failure.command';
+import { MessageFailureUseCase } from '../../usecases';
+import { MessageFailureCommand } from './message-failure.command';
 
-@CommandHandler(HandleSlackMessageFailureCommand)
-export class HandleSlackMessageFailureHandler
-  implements ICommandHandler<HandleSlackMessageFailureCommand, void>
+@CommandHandler(MessageFailureCommand)
+export class MessageFailureHandler
+  implements ICommandHandler<MessageFailureCommand, void>
 {
-  constructor(
-    private readonly handleSlackMessageFailureUseCase: HandleSlackMessageFailureUseCase,
-  ) {}
+  constructor(private readonly MessageFailureUseCase: MessageFailureUseCase) {}
 
-  async execute(command: HandleSlackMessageFailureCommand): Promise<void> {
+  async execute(command: MessageFailureCommand): Promise<void> {
     const { user, props } = command;
 
     try {
-      await this.handleSlackMessageFailureUseCase.execute(user, props);
+      await this.MessageFailureUseCase.execute(user, props);
     } catch (error) {
       handleCommandError(error, null, MessageExceptionMessage.createError);
       throw error;

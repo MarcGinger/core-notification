@@ -11,39 +11,18 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ILogger } from 'src/shared/logger';
 import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
-import { SlackDeliveryDomainService } from '../../domain/services/slack-delivery-domain.service';
+import { MessageDeliveryDomainService } from '../../domain/services/message-delivery-domain.service';
 import { SlackApiAdapter } from '../../infrastructure/adapters/slack-api.adapter';
 
 import { IUserToken } from 'src/shared/auth';
-import { Message } from '../../domain';
+import {
+  IMessage,
+  Message,
+  ProcessMessageProps,
+  WorkerMessageResult,
+} from '../../domain';
 import { MessageRepository } from '../../infrastructure/repositories';
-
-/**
- * Data required to send a Slack message
- */
-export interface SendSlackMessageData {
-  messageId: string;
-  tenant: string;
-  channel: string;
-  renderedMessage: string;
-  correlationId: string;
-  configCode: string;
-  isRetry?: boolean;
-  retryAttempt?: number;
-  priority?: 'normal' | 'urgent' | 'critical';
-}
-
-/**
- * Result of sending a Slack message
- */
-export interface SlackMessageResult {
-  success: boolean;
-  slackTimestamp?: string;
-  slackChannel?: string;
-  error?: string;
-  isRetryable?: boolean;
-  userFriendlyMessage?: string;
-}
+import { RenderMessageTemplateUseCase } from './render-message-template.usecase';
 
 /**
  * Use case for sending a Slack message
@@ -51,12 +30,13 @@ export interface SlackMessageResult {
  * Following DDD principles - uses aggregate for state changes and event emission
  */
 @Injectable()
-export class SendSlackMessageUseCase {
+export class ProcessMessageUseCase {
   constructor(
     @Inject('ILogger') private readonly logger: ILogger,
-    private readonly slackDeliveryDomainService: SlackDeliveryDomainService,
+    private readonly messageDeliveryDomainService: MessageDeliveryDomainService,
     private readonly slackApiAdapter: SlackApiAdapter,
     private readonly messageRepository: MessageRepository,
+    private readonly renderMessageTemplateUseCase: RenderMessageTemplateUseCase,
   ) {}
 
   /**
@@ -65,14 +45,14 @@ export class SendSlackMessageUseCase {
    */
   async execute(
     user: IUserToken,
-    data: SendSlackMessageData,
-  ): Promise<SlackMessageResult> {
+    data: ProcessMessageProps,
+  ): Promise<WorkerMessageResult> {
     // Enhanced logging context for send operation start
     const operationContext =
       CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
         'SendSlackMessageUseCase',
         'execute',
-        data.correlationId,
+        data.id,
         user,
         {
           operation: 'SEND',
@@ -80,64 +60,70 @@ export class SendSlackMessageUseCase {
           phase: 'START',
           hasUser: !!user,
           hasData: !!data,
-          messageId: data?.messageId,
-          tenant: data?.tenant,
-          channel: data?.channel,
-          configCode: data?.configCode,
+          id: data?.id,
+          tenant: user?.tenant,
           isRetry: data?.isRetry || false,
           retryAttempt: data?.retryAttempt || 0,
           priority: data?.priority || 'normal',
-          hasRenderedMessage: !!data?.renderedMessage,
         },
       );
 
     this.logger.log(
       operationContext,
-      `Starting Slack message delivery: messageId '${data.messageId}', correlationId '${data.correlationId}'`,
+      `Starting Slack message delivery: id '${data.id}', tenant '${user.tenant}'`,
     );
-
+    // Retrieve the message entity from repository
+    const message = await this.messageRepository.getMessage(user, data.id);
     try {
       // Business rule: Validate channel format before attempting delivery
-      const channelValidation =
-        this.slackDeliveryDomainService.validateChannelFormat(data.channel);
-      if (!channelValidation.isValid) {
-        return this.handlePermanentFailure(
-          user,
-          data,
-          `Invalid channel format: ${channelValidation.reason}`,
-          0,
-        );
-      }
+      // const channelValidation =
+      //   this.slackDeliveryDomainService.validateChannelFormat(
+      //     messageEntity.channel,
+      //   );
+      // if (!channelValidation.isValid) {
+      //   return this.handlePermanentFailure(
+      //     user,
+      //     data,
+      //     `Invalid channel format: ${channelValidation.reason}`,
+      //     0,
+      //   );
+      // }
+
+      // Render the message template
+      const renderedMessage = await this.renderMessageTemplateUseCase.execute(
+        user,
+        message,
+      );
 
       // Business logic: Load configuration (this would be implemented)
       const slackConfig = await this.loadSlackConfig(
-        data.configCode,
-        data.tenant,
+        message.configCode,
+        user.tenant || 'core',
       );
 
       // Technical concern: Send message via Slack API adapter
       const apiResult = await this.slackApiAdapter.sendMessage({
-        channel: data.channel,
-        text: data.renderedMessage,
+        channel: message.channel,
+        text: renderedMessage,
         botToken: slackConfig.botToken,
       });
 
       if (apiResult.success) {
         // Handle successful delivery - update aggregate and let it emit events
-        await this.handleSuccess(user, data, apiResult);
+        await this.handleSuccess(user, message);
 
         // Success logging with enhanced context
         const successContext =
           CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
             'SendSlackMessageUseCase',
             'execute',
-            data.correlationId,
+            message.correlationId,
             user,
             {
               operation: 'SEND',
               entityType: 'slack-message',
               phase: 'SUCCESS',
-              messageId: data.messageId,
+              id: data.id,
               slackTimestamp: apiResult.timestamp,
               slackChannel: apiResult.channel,
               deliveryTime: new Date().toISOString(),
@@ -146,7 +132,7 @@ export class SendSlackMessageUseCase {
 
         this.logger.log(
           successContext,
-          `Successfully delivered Slack message: messageId '${data.messageId}', slackTimestamp '${apiResult.timestamp}'`,
+          `Successfully delivered Slack message: id '${data.id}', slackTimestamp '${apiResult.timestamp}'`,
         );
 
         return {
@@ -157,21 +143,21 @@ export class SendSlackMessageUseCase {
       } else {
         // Business logic: Classify the error and determine retry strategy
         const errorClassification =
-          this.slackDeliveryDomainService.classifySlackError(
+          this.messageDeliveryDomainService.classifyMessageError(
             apiResult.error || 'unknown_error',
           );
 
         if (errorClassification === 'permanent') {
           return this.handlePermanentFailure(
             user,
-            data,
+            message,
             apiResult.error || 'Unknown error',
             data.retryAttempt || 0,
           );
         } else {
           return this.handleRetryableFailure(
             user,
-            data,
+            message,
             apiResult.error || 'Unknown error',
             data.retryAttempt || 0,
           );
@@ -186,13 +172,13 @@ export class SendSlackMessageUseCase {
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
           'SendSlackMessageUseCase',
           'execute',
-          data.correlationId,
+          data.id,
           user,
           {
             operation: 'SEND',
             entityType: 'slack-message',
             phase: 'ERROR',
-            messageId: data.messageId,
+            id: data.id,
             errorType:
               error instanceof Error ? error.constructor.name : 'Unknown',
             errorMessage,
@@ -202,13 +188,13 @@ export class SendSlackMessageUseCase {
 
       this.logger.error(
         errorContext,
-        `Failed to execute send Slack message use case: messageId '${data.messageId}'`,
+        `Failed to execute send Slack message use case: id '${data.id}'`,
       );
 
       // For unexpected errors, treat as retryable
       return this.handleRetryableFailure(
         user,
-        data,
+        message,
         errorMessage,
         data.retryAttempt || 0,
       );
@@ -221,18 +207,11 @@ export class SendSlackMessageUseCase {
    */
   private async handleSuccess(
     user: IUserToken,
-    data: SendSlackMessageData,
-    apiResult: { timestamp?: string; channel?: string },
+    message: IMessage,
   ): Promise<void> {
     try {
-      // Retrieve the message entity from repository
-      const messageEntity = await this.messageRepository.getMessage(
-        user,
-        data.messageId,
-      );
-
       // Convert to aggregate using the domain factory method
-      const aggregate = Message.fromEntity(messageEntity);
+      const aggregate = Message.fromEntity(message);
 
       // Mark message as successfully delivered - this will emit MessageDeliveredEvent
       aggregate.markAsDelivered(user);
@@ -245,8 +224,8 @@ export class SendSlackMessageUseCase {
     } catch (error) {
       this.logger.warn(
         {
-          messageId: data.messageId,
-          correlationId: data.correlationId,
+          id: message.id,
+          correlationId: message.correlationId,
           error: error instanceof Error ? error.message : 'Unknown error',
         },
         'Failed to update message aggregate after successful delivery - message was sent but state may be inconsistent',
@@ -261,27 +240,27 @@ export class SendSlackMessageUseCase {
    */
   private async handlePermanentFailure(
     user: IUserToken,
-    data: SendSlackMessageData,
+    message: IMessage,
     error: string,
     retryAttempt: number,
-  ): Promise<SlackMessageResult> {
+  ): Promise<WorkerMessageResult> {
     const userFriendlyMessage =
-      this.slackDeliveryDomainService.generateUserFriendlyErrorMessage(
+      this.messageDeliveryDomainService.generateUserFriendlyErrorMessage(
         error,
-        data.channel,
+        message.channel,
       );
 
     // Error logging with enhanced context
     const errorContext = CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
       'SendSlackMessageUseCase',
       'handlePermanentFailure',
-      data.correlationId,
+      message.correlationId,
       user,
       {
         operation: 'SEND',
         entityType: 'slack-message',
         phase: 'PERMANENT_FAILURE',
-        messageId: data.messageId,
+        id: message.id,
         error,
         retryAttempt,
         willRetry: false,
@@ -292,16 +271,12 @@ export class SendSlackMessageUseCase {
 
     this.logger.error(
       errorContext,
-      `Slack message delivery permanently failed: messageId '${data.messageId}', will not retry`,
+      `Slack message delivery permanently failed: id '${message.id}', will not retry`,
     );
 
     // Update aggregate with failure details - let aggregate emit events
     try {
-      const messageEntity = await this.messageRepository.getMessage(
-        user,
-        data.messageId,
-      );
-      const aggregate = Message.fromEntity(messageEntity);
+      const aggregate = Message.fromEntity(message);
 
       // Mark message as failed - this will emit MessageDeliveryFailedEvent
       aggregate.markAsFailed(user, userFriendlyMessage);
@@ -313,8 +288,8 @@ export class SendSlackMessageUseCase {
     } catch (aggregateError) {
       this.logger.warn(
         {
-          messageId: data.messageId,
-          correlationId: data.correlationId,
+          id: message.id,
+          correlationId: message.correlationId,
           error:
             aggregateError instanceof Error
               ? aggregateError.message
@@ -339,27 +314,27 @@ export class SendSlackMessageUseCase {
    */
   private handleRetryableFailure(
     user: IUserToken,
-    data: SendSlackMessageData,
+    message: IMessage,
     error: string,
     retryAttempt: number,
-  ): SlackMessageResult {
-    const willRetry = this.slackDeliveryDomainService.shouldRetryMessage(
+  ): WorkerMessageResult {
+    const willRetry = this.messageDeliveryDomainService.shouldRetryMessage(
       retryAttempt,
       4, // Default max attempts
-      data.priority || 'normal',
+      message.priority,
     );
 
     // Error logging with enhanced context
     const errorContext = CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
       'SendSlackMessageUseCase',
       'handleRetryableFailure',
-      data.correlationId,
+      message.correlationId,
       user,
       {
         operation: 'SEND',
         entityType: 'slack-message',
         phase: 'RETRYABLE_FAILURE',
-        messageId: data.messageId,
+        id: message.id,
         error,
         retryAttempt,
         willRetry,
@@ -369,7 +344,7 @@ export class SendSlackMessageUseCase {
 
     this.logger.error(
       errorContext,
-      `Slack message delivery failed: messageId '${data.messageId}', retryable error, willRetry: ${willRetry}`,
+      `Slack message delivery failed: id '${message.id}', retryable error, willRetry: ${willRetry}`,
     );
 
     // Update aggregate with failure details - let aggregate emit events
@@ -377,15 +352,15 @@ export class SendSlackMessageUseCase {
     // If aggregate update fails, the retry logic still continues
     this.updateAggregateWithRetryableFailure(
       user,
-      data,
+      message,
       error,
       retryAttempt,
       willRetry,
     ).catch((aggregateError) => {
       this.logger.warn(
         {
-          messageId: data.messageId,
-          correlationId: data.correlationId,
+          id: message.id,
+          correlationId: message.correlationId,
           error:
             aggregateError instanceof Error
               ? aggregateError.message
@@ -407,34 +382,23 @@ export class SendSlackMessageUseCase {
    */
   private async updateAggregateWithRetryableFailure(
     user: IUserToken,
-    data: SendSlackMessageData,
+    message: IMessage,
     error: string,
     retryAttempt: number,
     willRetry: boolean,
   ): Promise<void> {
-    try {
-      const messageEntity = await this.messageRepository.getMessage(
-        user,
-        data.messageId,
-      );
-      const aggregate = Message.fromEntity(messageEntity);
+    const aggregate = Message.fromEntity(message);
 
-      // Handle retry or final failure with appropriate business method
-      if (willRetry) {
-        // Calculate next retry time (could be configurable)
-        const nextRetryAt = new Date(Date.now() + 60000); // 1 minute from now
-        aggregate.markForRetry(user, error, nextRetryAt);
-      } else {
-        aggregate.markAsFailed(user, error);
-      }
-      // Status change automatically updates _updatedAt
-
-      // Save the updated aggregate
-      await this.messageRepository.saveMessage(user, aggregate);
-    } catch (error) {
-      // Re-throw to be caught by the caller
-      throw error;
+    // Handle retry or final failure with appropriate business method
+    if (willRetry) {
+      // Calculate next retry time (could be configurable)
+      const nextRetryAt = new Date(Date.now() + 60000); // 1 minute from now
+      aggregate.markForRetry(user, error, nextRetryAt);
+    } else {
+      aggregate.markAsFailed(user, error);
     }
+    // Save the updated aggregate
+    await this.messageRepository.saveMessage(user, aggregate);
   }
 
   /**

@@ -9,10 +9,10 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
-import { MessageTemplateDomainService } from '../../domain/services/message-template.domain-service';
 import { IUserToken } from 'src/shared/auth';
+import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
 import { CreateMessageProps } from '../../domain/properties';
+import { MessageTemplateDomainService } from '../../domain/services/message-template.domain-service';
 
 /**
  * Use case for rendering message templates.
@@ -107,7 +107,7 @@ export class RenderMessageTemplateUseCase {
       // For now, use a mock template content
       const templateContent = await this.loadTemplateContent(
         props.templateCode!,
-        user.tenant || 'core',
+        user.tenant || 'rrrr',
       );
 
       // Use domain service to render the message

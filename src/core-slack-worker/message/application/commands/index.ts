@@ -10,7 +10,7 @@
 
 // Command Handlers
 import { CreateMessageHandler } from './create/create-message.handler';
-import { HandleSlackMessageFailureHandler } from './handle-failure/handle-slack-message-failure.handler';
+import { MessageFailureHandler } from './handle-failure/message-failure.handler';
 import { QueueMessageHandler } from './queue/queue-message.handler';
 import { RenderMessageTemplateHandler } from './render/render-message-template.handler';
 import { ScheduleExistingMessageHandler } from './schedule/schedule-existing-message.handler';
@@ -18,7 +18,7 @@ import { ScheduleExistingMessageHandler } from './schedule/schedule-existing-mes
 // All Message Command Handlers
 export const MessageCommands = [
   CreateMessageHandler,
-  HandleSlackMessageFailureHandler,
+  MessageFailureHandler,
   QueueMessageHandler,
   RenderMessageTemplateHandler,
   ScheduleExistingMessageHandler,
@@ -26,13 +26,13 @@ export const MessageCommands = [
 
 // Export Commands
 export * from './create/create-message.command';
-export * from './handle-failure/handle-slack-message-failure.command';
+export * from './handle-failure/message-failure.command';
 export * from './queue/queue-message.command';
 export * from './render/render-message-template.command';
 export * from './schedule/schedule-existing-message.command';
 
 // Export Handlers
 export * from './create/create-message.handler';
-export * from './handle-failure/handle-slack-message-failure.handler';
+export * from './handle-failure/message-failure.handler';
 export * from './queue/queue-message.handler';
 export * from './render/render-message-template.handler';

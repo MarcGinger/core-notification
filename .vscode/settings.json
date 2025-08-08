@@ -1,0 +1,31 @@
+{
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.suggest.autoImports": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+  "debug.allowBreakpointsEverywhere": true,
+  "debug.inlineValues": "auto",
+  "debug.showInlineBreakpointCandidates": true,
+  "debug.saveBeforeStart": "allEditorsInActiveGroup",
+  "jest.runMode": "on-demand",
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/*.js": {
+      "when": "$(basename).ts"
+    },
+    "**/*.js.map": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/*.js": {
+      "when": "$(basename).ts"
+    }
+  },
+  "eslint.validate": ["typescript"],
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
+}

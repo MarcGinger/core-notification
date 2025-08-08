@@ -16,25 +16,10 @@ import {
   QUEUE_NAMES,
   QUEUE_PRIORITIES,
 } from 'src/shared/infrastructure/bullmq';
-import { MessageStatusEnum } from '../../domain/entities';
 import { MessageRepository } from '../../infrastructure/repositories';
-import { MessageDomainService } from '../../domain/services';
 import { IUserToken } from 'src/shared/auth';
-import { Message } from '../../domain';
-
-/**
- * Properties for handling Slack message failure
- */
-export interface HandleSlackMessageFailureProps {
-  messageId: string;
-  tenant: string;
-  channel: string;
-  correlationId: string;
-  configCode: string;
-  failureReason: string;
-  retryCount: number;
-  willRetry: boolean;
-}
+import { WorkerMessageProps } from '../../domain/properties';
+import { Message } from '../../domain/aggregates';
 
 /**
  * Use case for handling Slack message delivery failures.
@@ -47,13 +32,12 @@ export interface HandleSlackMessageFailureProps {
  * - Comprehensive error handling and audit logging
  */
 @Injectable()
-export class HandleSlackMessageFailureUseCase {
-  private readonly logger = new Logger(HandleSlackMessageFailureUseCase.name);
+export class MessageFailureUseCase {
+  private readonly logger = new Logger(MessageFailureUseCase.name);
 
   constructor(
     @InjectQueue(QUEUE_NAMES.SLACK_MESSAGE) private slackQueue: Queue,
     private readonly messageRepository: MessageRepository,
-    private readonly messageDomainService: MessageDomainService,
   ) {}
 
   /**
@@ -62,16 +46,13 @@ export class HandleSlackMessageFailureUseCase {
    * @param props - The failure properties
    * @returns Promise<void>
    */
-  async execute(
-    user: IUserToken,
-    props: HandleSlackMessageFailureProps,
-  ): Promise<void> {
+  async execute(user: IUserToken, props: WorkerMessageProps): Promise<void> {
     // Enhanced logging context for failure handling start
     const operationContext =
       CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-        'HandleSlackMessageFailureUseCase',
+        'MessageFailureUseCase',
         'execute',
-        `${props.tenant}-${props.messageId}`,
+        `${user.tenant}-${props.messageId}`,
         undefined, // No user context in failure handling
         {
           operation: 'HANDLE_FAILURE',
@@ -79,7 +60,7 @@ export class HandleSlackMessageFailureUseCase {
           phase: 'START',
           messageId: props.messageId,
           correlationId: props.correlationId,
-          tenant: props.tenant,
+          tenant: user.tenant,
           channel: props.channel,
           failureReason: props.failureReason,
           retryCount: props.retryCount,
@@ -124,15 +105,15 @@ export class HandleSlackMessageFailureUseCase {
 
       // Handle retry logic
       if (props.willRetry) {
-        await this.scheduleRetry(props);
+        await this.scheduleRetry(user, props);
       }
 
       // Success logging with enhanced context
       const successContext =
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-          'HandleSlackMessageFailureUseCase',
+          'MessageFailureUseCase',
           'execute',
-          `${props.tenant}-${props.messageId}`,
+          `${user.tenant}-${props.messageId}`,
           undefined,
           {
             operation: 'HANDLE_FAILURE',
@@ -157,9 +138,9 @@ export class HandleSlackMessageFailureUseCase {
       // Error logging with enhanced context
       const errorContext =
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-          'HandleSlackMessageFailureUseCase',
+          'MessageFailureUseCase',
           'execute',
-          `${props.tenant}-${props.messageId}`,
+          `${user.tenant}-${props.messageId}`,
           undefined,
           {
             operation: 'HANDLE_FAILURE',
@@ -189,7 +170,8 @@ export class HandleSlackMessageFailureUseCase {
    * Schedule retry with exponential backoff
    */
   private async scheduleRetry(
-    props: HandleSlackMessageFailureProps,
+    user: IUserToken,
+    props: WorkerMessageProps,
   ): Promise<void> {
     const retryDelay = Math.min(Math.pow(2, props.retryCount) * 1000, 60000); // Max 1 minute
     const nextRetryAttempt = props.retryCount + 1;
@@ -197,9 +179,9 @@ export class HandleSlackMessageFailureUseCase {
     // Enhanced logging context for retry scheduling start
     const operationContext =
       CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-        'HandleSlackMessageFailureUseCase',
+        'MessageFailureUseCase',
         'scheduleRetry',
-        `${props.tenant}-${props.messageId}`,
+        `${user.tenant}-${props.messageId}`,
         undefined,
         {
           operation: 'SCHEDULE_RETRY',
@@ -207,7 +189,7 @@ export class HandleSlackMessageFailureUseCase {
           phase: 'START',
           messageId: props.messageId,
           correlationId: props.correlationId,
-          tenant: props.tenant,
+          tenant: user.tenant,
           channel: props.channel,
           retryCount: props.retryCount,
           nextRetryAttempt,
@@ -226,7 +208,7 @@ export class HandleSlackMessageFailureUseCase {
         'deliver-slack-message',
         {
           messageId: props.messageId,
-          tenant: props.tenant,
+          tenant: user.tenant,
           channel: props.channel,
           correlationId: props.correlationId,
           configCode: props.configCode,
@@ -246,9 +228,9 @@ export class HandleSlackMessageFailureUseCase {
       // MessageDeliveryFailedEvent or MessageRetryingEvent will be emitted based on willRetry flag
       const eventLogContext =
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-          'HandleSlackMessageFailureUseCase',
+          'MessageFailureUseCase',
           'scheduleRetry',
-          `${props.tenant}-${props.messageId}`,
+          `${user.tenant}-${props.messageId}`,
           undefined,
           {
             operation: 'SCHEDULE_RETRY',
@@ -274,9 +256,9 @@ export class HandleSlackMessageFailureUseCase {
       // Success logging with enhanced context
       const successContext =
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-          'HandleSlackMessageFailureUseCase',
+          'MessageFailureUseCase',
           'scheduleRetry',
-          `${props.tenant}-${props.messageId}`,
+          `${user.tenant}-${props.messageId}`,
           undefined,
           {
             operation: 'SCHEDULE_RETRY',
@@ -300,9 +282,9 @@ export class HandleSlackMessageFailureUseCase {
       // Error logging with enhanced context
       const errorContext =
         CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-          'HandleSlackMessageFailureUseCase',
+          'MessageFailureUseCase',
           'scheduleRetry',
-          `${props.tenant}-${props.messageId}`,
+          `${user.tenant}-${props.messageId}`,
           undefined,
           {
             operation: 'SCHEDULE_RETRY',

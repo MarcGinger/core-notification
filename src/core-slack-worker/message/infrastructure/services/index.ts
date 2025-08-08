@@ -9,4 +9,4 @@
  */
 
 // Export all infrastructure services for easy importing
-export { SlackMessageQueueService } from './slack-message-queue.service';
+export { MessageQueueService } from './message-queue.service';

@@ -8,6 +8,13 @@
  * Confidential and proprietary.
  */
 
-export * from './message-delivery-domain.service';
-export * from './message-domain.service';
-export * from './message-template.domain-service';
+export interface UpdateMessageProps {
+  readonly id: string;
+  readonly channel: string;
+  readonly configCode: string;
+  readonly templateCode?: string;
+  readonly payload?: Record<string, any>;
+  readonly scheduledAt?: Date;
+  readonly priority?: number;
+  readonly correlationId?: string;
+}

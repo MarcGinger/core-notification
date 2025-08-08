@@ -9,6 +9,10 @@
  */
 
 export * from './create-message.model';
-export * from './message.props';
-export * from './snapshot-message.model';
 export * from './create-send-slack-message.model';
+export * from './message.props';
+export * from './process-message.props';
+export * from './snapshot-message.model';
+export * from './update-message.model';
+export * from './worker-message-result.model';
+export * from './worker-message.model';

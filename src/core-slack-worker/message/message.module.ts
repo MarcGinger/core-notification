@@ -23,9 +23,9 @@ import {
 import { MessageUseCases } from './application/usecases';
 import { MessageExceptionMessage } from './domain/exceptions';
 import {
+  MessageDeliveryDomainService,
   MessageDomainService,
   MessageTemplateDomainService,
-  SlackDeliveryDomainService,
 } from './domain/services';
 import { MessageController } from './infrastructure/controllers';
 import { SlackMessageRequestController } from './infrastructure/controllers/slack-message-request.controller';
@@ -41,8 +41,8 @@ import {
 import { CqrsModule } from '@nestjs/cqrs';
 import { SlackMessageRequestService } from './application/services/slack-message-request.service';
 import { SlackApiAdapter } from './infrastructure/adapters/slack-api.adapter';
-import { SlackMessageProcessor } from './infrastructure/processors';
-import { SlackMessageQueueService } from './infrastructure/services/slack-message-queue.service';
+import { MessageProcessor } from './infrastructure/processors';
+import { MessageQueueService } from './infrastructure/services/message-queue.service';
 
 @Module({
   imports: [
@@ -56,14 +56,14 @@ import { SlackMessageQueueService } from './infrastructure/services/slack-messag
   providers: [
     MessageService,
     MessageDomainService,
-    SlackDeliveryDomainService,
+    MessageDeliveryDomainService,
     MessageTemplateDomainService,
     MessageRepository,
     MessageSqlRepository,
     // ProcessedEventRepository is now provided by EventProcessingModule
     MessageApplicationService,
     SlackMessageRequestService,
-    SlackMessageQueueService,
+    MessageQueueService,
 
     // Infrastructure Adapters
     SlackApiAdapter,
@@ -73,7 +73,7 @@ import { SlackMessageQueueService } from './infrastructure/services/slack-messag
     ...MessageUseCases,
 
     // BullMQ Processors
-    SlackMessageProcessor,
+    MessageProcessor,
 
     // Exception Messages
     {
@@ -90,7 +90,7 @@ import { SlackMessageQueueService } from './infrastructure/services/slack-messag
     SlackMessageEventHandler,
     SlackMessageEventSubscriptionManager,
     SlackMessageRequestService,
-    SlackMessageQueueService,
+    MessageQueueService,
   ],
 })
 export class MessageModule {}

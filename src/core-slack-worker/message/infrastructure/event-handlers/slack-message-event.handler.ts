@@ -7,9 +7,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import { IUserToken } from 'src/shared/auth';
 import { EventStoreMetaProps } from 'src/shared/infrastructure/event-store';
 import { ILogger } from 'src/shared/logger';
-import { MessageCreatedEvent } from '../../domain/events';
 import { MessageService } from '../../application/services';
-import { IMessage } from '../../domain';
+import { UpdateMessageProps } from '../../domain';
+import { MessageCreatedEvent } from '../../domain/events';
 @Injectable()
 export class SlackMessageEventHandler {
   private readonly systemUser: IUserToken;
@@ -32,7 +32,7 @@ export class SlackMessageEventHandler {
    * Simple event handler - EventStore handles deduplication for us
    */
   async handleMessageEvent(
-    eventData: IMessage,
+    eventData: UpdateMessageProps,
     meta: EventStoreMetaProps,
   ): Promise<void> {
     this.logger.log(
@@ -63,8 +63,17 @@ export class SlackMessageEventHandler {
       }
 
       // Create tenant user
-      const tenantUser: IUserToken = { ...this.systemUser, tenant };
+      const tenantUser: IUserToken = {
+        sub: meta.userId || 'unknown',
+        name: meta.username || 'Unknown User',
+        email: meta.username || 'unknown@internal',
+        preferred_username: meta.username || 'unknown',
+        tenant: meta.tenant || 'yyyy',
+        tenant_id: meta.tenantId || '',
+        client_id: meta.userId,
+      };
 
+      console.log(tenantUser);
       // Process the message (business logic)
       await this.processMessage(tenantUser, eventData);
 
@@ -92,7 +101,7 @@ export class SlackMessageEventHandler {
    */
   private async processMessage(
     user: IUserToken,
-    eventData: IMessage,
+    eventData: UpdateMessageProps,
   ): Promise<void> {
     // Use the existing working QueueSlackMessageCommand
     // This was working fine before - no need to complicate it

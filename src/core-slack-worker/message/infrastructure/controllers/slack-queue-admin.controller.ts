@@ -8,20 +8,20 @@
  * Confidential and proprietary.
  */
 
-import { Controller, Post, Body, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { SlackMessageQueueService } from '../services/slack-message-queue.service';
-import { SlackMessageJobData } from '../processors/slack-message.processor';
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { MessageJobData } from '../processors';
+import { MessageQueueService } from '../services/message-queue.service';
 
 /**
  * Admin controller for direct queue management
- * This is separate from the main SlackMessageRequestController
+ * This is separate from the main MessageRequestController
  * and provides direct access to queue operations for admin purposes
  */
-@ApiTags('Slack Queue Admin')
-@Controller('admin/slack-queue')
-export class SlackQueueAdminController {
-  constructor(private readonly slackQueueService: SlackMessageQueueService) {}
+@ApiTags('Message Queue Admin')
+@Controller('admin/message-queue')
+export class MessageQueueAdminController {
+  constructor(private readonly messageQueueService: MessageQueueService) {}
 
   /**
    * Get queue statistics and health
@@ -34,8 +34,8 @@ export class SlackQueueAdminController {
   })
   async getQueueStats() {
     const [stats, health] = await Promise.all([
-      this.slackQueueService.getQueueStats(),
-      this.slackQueueService.getQueueHealth(),
+      this.messageQueueService.getQueueStats(),
+      this.messageQueueService.getQueueHealth(),
     ]);
 
     return {
@@ -54,7 +54,7 @@ export class SlackQueueAdminController {
     description: 'Returns a list of failed jobs for debugging and analysis',
   })
   async getFailedJobs() {
-    return this.slackQueueService.getFailedJobs(0, 20);
+    return this.messageQueueService.getFailedJobs(0, 20);
   }
 
   /**
@@ -66,7 +66,7 @@ export class SlackQueueAdminController {
     description: 'Removes old completed and failed jobs to free up memory',
   })
   async cleanQueue() {
-    return this.slackQueueService.cleanQueue();
+    return this.messageQueueService.cleanQueue();
   }
 
   /**
@@ -78,7 +78,7 @@ export class SlackQueueAdminController {
     description: 'Temporarily stops processing new jobs',
   })
   async pauseQueue() {
-    await this.slackQueueService.pauseQueue();
+    await this.messageQueueService.pauseQueue();
     return { message: 'Queue paused successfully' };
   }
 
@@ -91,7 +91,7 @@ export class SlackQueueAdminController {
     description: 'Resumes processing jobs after being paused',
   })
   async resumeQueue() {
-    await this.slackQueueService.resumeQueue();
+    await this.messageQueueService.resumeQueue();
     return { message: 'Queue resumed successfully' };
   }
 
@@ -104,8 +104,8 @@ export class SlackQueueAdminController {
     description:
       'For testing and admin purposes - bypasses the event-driven workflow',
   })
-  async addDirectJob(@Body() jobData: SlackMessageJobData) {
-    const job = await this.slackQueueService.addSlackMessageJob(jobData);
+  async addDirectJob(@Body() jobData: MessageJobData) {
+    const job = await this.messageQueueService.addSlackMessageJob(jobData);
     return {
       jobId: job.id,
       message: 'Job added directly to queue',
@@ -120,8 +120,9 @@ export class SlackQueueAdminController {
     summary: 'Add an urgent high-priority job',
     description: 'Adds a job with urgent priority for immediate processing',
   })
-  async addUrgentJob(@Body() jobData: SlackMessageJobData) {
-    const job = await this.slackQueueService.addUrgentSlackMessageJob(jobData);
+  async addUrgentJob(@Body() jobData: MessageJobData) {
+    const job =
+      await this.messageQueueService.addUrgentSlackMessageJob(jobData);
     return {
       jobId: job.id,
       priority: 'urgent',

@@ -1,8 +1,8 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { Redis } from 'ioredis';
 import { RedisService } from '@liaoliaots/nestjs-redis';
-import { ILogger } from 'src/shared/logger';
+import { Inject, Injectable } from '@nestjs/common';
+import { Redis } from 'ioredis';
 import { IUserToken } from 'src/shared/auth';
+import { ILogger } from 'src/shared/logger';
 
 @Injectable()
 export class RedisUtilityService {
@@ -24,7 +24,7 @@ export class RedisUtilityService {
    * @private
    */
   private buildKey(user: IUserToken, type: string): string {
-    const tenant = user?.tenant || 'core';
+    const tenant = user?.tenant || 'pppp';
     return `${type}:${tenant}`;
   }
 

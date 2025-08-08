@@ -12,7 +12,11 @@ import { Injectable } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
 import { IMessage } from '../../domain/entities';
-import { QueueMessageCommand } from '../commands';
+import { MessageFailureCommand, QueueMessageCommand } from '../commands';
+import {
+  UpdateMessageProps,
+  WorkerMessageProps,
+} from '../../domain/properties';
 
 // generate-api-service
 
@@ -20,10 +24,24 @@ import { QueueMessageCommand } from '../commands';
 export class MessageService {
   constructor(private readonly commandBus: CommandBus) {}
 
-  async queueMessage(user: IUserToken, dto: IMessage): Promise<IMessage> {
+  async queueMessage(
+    user: IUserToken,
+    dto: UpdateMessageProps,
+  ): Promise<IMessage> {
     const entity = await this.commandBus.execute<QueueMessageCommand, IMessage>(
       new QueueMessageCommand(user, dto),
     );
+    return entity;
+  }
+
+  async messageFailed(
+    user: IUserToken,
+    dto: WorkerMessageProps,
+  ): Promise<IMessage> {
+    const entity = await this.commandBus.execute<
+      MessageFailureCommand,
+      IMessage
+    >(new MessageFailureCommand(user, dto));
     return entity;
   }
 }
