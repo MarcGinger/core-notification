@@ -1,1 +1,2 @@
-export * from './message.factory';
+export * from './create-message.factory';
+export * from './update-message.factory';

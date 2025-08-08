@@ -4,39 +4,19 @@ export class ScheduledAt {
   private readonly value: Date | undefined;
 
   private constructor(value?: Date) {
-    if (value) {
-      // Check if the date is valid
-      if (isNaN(value.getTime())) {
-        throw new MessageDomainException(
-          MessageExceptionMessage.invalidScheduledAtDate,
-        );
-      }
-
-      if (value.getTime() <= Date.now()) {
-        throw new MessageDomainException(
-          MessageExceptionMessage.scheduledAtMustBeInFuture,
-        );
-      }
+    if (value && isNaN(value.getTime())) {
+      throw new MessageDomainException(
+        MessageExceptionMessage.invalidScheduledAtDate,
+      );
     }
 
     this.value = value;
   }
 
-  /**
-   * Factory method that accepts string, Date, or undefined
-   */
   public static create(value?: string | Date): ScheduledAt {
-    if (value === undefined) {
-      return new ScheduledAt(undefined);
-    }
+    if (!value) return new ScheduledAt(undefined);
 
-    let parsed: Date;
-    if (typeof value === 'string') {
-      parsed = new Date(value);
-    } else {
-      parsed = value;
-    }
-
+    const parsed = typeof value === 'string' ? new Date(value) : value;
     return new ScheduledAt(parsed);
   }
 
@@ -44,12 +24,12 @@ export class ScheduledAt {
     return this.value;
   }
 
-  public isScheduled(): boolean {
-    return !!this.value;
-  }
-
   public getDelayInMs(): number {
     if (!this.value) return 0;
     return Math.max(0, this.value.getTime() - Date.now());
+  }
+
+  public isFuture(): boolean {
+    return !!this.value && this.value.getTime() > Date.now();
   }
 }

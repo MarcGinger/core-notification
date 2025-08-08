@@ -10,7 +10,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
 import { MessageExceptionMessage } from '../../domain/exceptions';
-import { MessageFactory } from '../../domain/factories';
+import { UpdateMessageFactory } from '../../domain/factories';
 import { UpdateMessageProps } from '../../domain/properties';
 import { MessageRepository } from '../../infrastructure/repositories';
 
@@ -79,13 +79,16 @@ export class QueueMessageUseCase {
 
     try {
       // Create message aggregate through domain service
-      const messageAggregate = MessageFactory.fromProps(props, correlationId);
+      const messageAggregate = UpdateMessageFactory.fromProps(
+        props,
+        correlationId,
+      );
 
       // Queue delivery job with appropriate priority and scheduling
       const jobOptions = {
         priority: props.priority || QUEUE_PRIORITIES.HIGH,
-        delay: props.scheduledAt
-          ? Math.max(0, props.scheduledAt.getTime() - Date.now())
+        delay: messageAggregate.scheduledAt
+          ? Math.max(0, messageAggregate.scheduledAt.getDelayInMs())
           : 0,
         attempts: 4,
         backoff: {

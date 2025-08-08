@@ -12,7 +12,6 @@
 import { CreateMessageHandler } from './create/create-message.handler';
 import { ProcessMessageHandler } from './process/process-message.handler';
 import { QueueMessageHandler } from './queue/queue-message.handler';
-import { RenderMessageTemplateHandler } from './render/render-message-template.handler';
 import { ScheduleExistingMessageHandler } from './schedule/schedule-existing-message.handler';
 
 // All Message Command Handlers
@@ -20,7 +19,6 @@ export const MessageCommands = [
   CreateMessageHandler,
   QueueMessageHandler,
   ProcessMessageHandler,
-  RenderMessageTemplateHandler,
   ScheduleExistingMessageHandler,
 ];
 
@@ -28,11 +26,9 @@ export const MessageCommands = [
 export * from './create/create-message.command';
 export * from './process/process-message.command';
 export * from './queue/queue-message.command';
-export * from './render/render-message-template.command';
 export * from './schedule/schedule-existing-message.command';
 
 // Export Handlers
 export * from './create/create-message.handler';
 export * from './process/process-message.handler';
 export * from './queue/queue-message.handler';
-export * from './render/render-message-template.handler';

@@ -11,7 +11,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { IUserToken } from 'src/shared/auth';
 import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
-import { CreateMessageProps } from '../../domain/properties';
+import { IMessage } from '../../domain';
 import { MessageTemplateDomainService } from '../../domain/services/message-template.domain-service';
 
 /**
@@ -37,7 +37,7 @@ export class RenderMessageTemplateUseCase {
    * @param props - The rendering properties
    * @returns Promise<string> - The rendered message
    */
-  async execute(user: IUserToken, props: CreateMessageProps): Promise<string> {
+  async execute(user: IUserToken, props: IMessage): Promise<string> {
     // Enhanced logging context for render operation start
     const operationContext =
       CoreSlackWorkerLoggingHelper.createEnhancedLogContext(

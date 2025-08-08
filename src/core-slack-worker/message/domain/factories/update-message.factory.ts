@@ -3,7 +3,7 @@ import { Message } from '../aggregates';
 import { IMessage, MessageStatusEnum } from '../entities';
 import { UpdateMessageProps } from '../properties';
 
-export class MessageFactory {
+export class UpdateMessageFactory {
   /**
    * Creates a Message aggregate from the provided props and rendered message.
    * @param props - The user-supplied UpdateMessageProps
