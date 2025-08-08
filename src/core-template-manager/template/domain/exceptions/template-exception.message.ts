@@ -16,7 +16,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `Authentication is required to modify Template relationships`,
     code: `USER_REQUIRED_FOR_OPERATION_TEMPLATE`,
     exception: `UnauthorizedException`,
-    statusCode: `401`,
+    statusCode: 401,
     domain: `true`,
   },
   userRequiredForUpdates: {
@@ -24,7 +24,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `Authentication is required for property updates on Template`,
     code: `USER_REQUIRED_FOR_UPDATES_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   userRequiredForDeletion: {
@@ -32,7 +32,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `Authentication is required to delete Template entities`,
     code: `USER_REQUIRED_FOR_DELETION_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   userRequiredForEnable: {
@@ -40,7 +40,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `Authentication is required to enable Template entities`,
     code: `USER_REQUIRED_FOR_ENABLE_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   userRequiredForDisable: {
@@ -48,7 +48,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `Authentication is required to disable Template entities`,
     code: `USER_REQUIRED_FOR_DISABLE_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   userRequiredForStatus: {
@@ -56,7 +56,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `Authentication is required to update Template status`,
     code: `USER_REQUIRED_FOR_STATUS_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   invalidStatusValue: {
@@ -64,7 +64,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `A valid status value must be provided when updating Template status`,
     code: `INVALID_STATUS_VALUE_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   cannotDeactivateDefault: {
@@ -72,7 +72,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `Business rule violation: default entities cannot be deactivated without setting another as default`,
     code: `CANNOT_DEACTIVATE_DEFAULT_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `409`,
+    statusCode: 409,
     domain: `true`,
   },
   cannotSetInactiveAsDefault: {
@@ -80,7 +80,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `Business rule violation: inactive entities cannot be set as default`,
     code: `CANNOT_SET_INACTIVE_AS_DEFAULT_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `409`,
+    statusCode: 409,
     domain: `true`,
   },
   fieldNameRequired: {
@@ -88,7 +88,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `The name field is required for Template and must be a non-empty string`,
     code: `INVALID_NAME_VALUE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldTransportRequired: {
@@ -96,7 +96,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `The transport field is required for Template`,
     code: `INVALID_TRANSPORT_VALUE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldUseCaseRequired: {
@@ -104,7 +104,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `The use_case field is required for Template`,
     code: `INVALID_USE_CASE_VALUE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldContentRequired: {
@@ -112,7 +112,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `The content field is required for Template and must be a non-empty string`,
     code: `INVALID_CONTENT_VALUE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldContentUrlRequired: {
@@ -120,7 +120,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `The content_url field is required for Template and must be a non-empty string`,
     code: `INVALID_CONTENT_URL_VALUE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldPayloadSchemaRequired: {
@@ -128,7 +128,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `The payload_schema field is required for Template`,
     code: `INVALID_PAYLOAD_SCHEMA_VALUE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldCodeRequired: {
@@ -136,7 +136,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when creating a TemplateIdentifier with an invalid code value.`,
     code: `FIELD_CODE_REQUIRED_FOR_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldCodeEmpty: {
@@ -144,7 +144,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when creating a TemplateIdentifier with an empty or whitespace-only code value.`,
     code: `FIELD_CODE_EMPTY_FOR_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   invalidRecordOfInputType: {
@@ -152,7 +152,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when trying to convert a string to a Record<string, ITemplate> in toRecordOfTemplates function.`,
     code: `INVALID_RECORD_OF_INPUT_TYPE_FOR_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   invalidArrayOfInputType: {
@@ -160,7 +160,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when trying to convert a string to an array of ITemplate in toArrayOfTemplates function.`,
     code: `INVALID_ARRAY_OF_INPUT_TYPE_FOR_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   invalidStringConversion: {
@@ -168,7 +168,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when trying to convert a string to ITemplate but no valid string identifier column is available.`,
     code: `INVALID_STRING_CONVERSION_FOR_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   invalidInputTypeForConversion: {
@@ -176,7 +176,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when trying to convert a string to ITemplate in toTemplate function when string conversion is not supported.`,
     code: `INVALID_INPUT_TYPE_FOR_CONVERSION_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   requiredName: {
@@ -184,7 +184,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when validating a Template and the required field name is missing or null.`,
     code: `REQUIRED_NAME_FOR_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   requiredTransport: {
@@ -192,7 +192,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when validating a Template and the required field transport is missing or null.`,
     code: `REQUIRED_TRANSPORT_FOR_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   requiredUseCase: {
@@ -200,7 +200,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when validating a Template and the required field useCase is missing or null.`,
     code: `REQUIRED_USE_CASE_FOR_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   requiredContent: {
@@ -208,7 +208,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when validating a Template and the required field content is missing or null.`,
     code: `REQUIRED_CONTENT_FOR_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   requiredContentUrl: {
@@ -216,7 +216,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when validating a Template and the required field contentUrl is missing or null.`,
     code: `REQUIRED_CONTENT_URL_FOR_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   emptyVersionArray: {
@@ -224,7 +224,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `This error occurs when validating a Template and the version array is empty when it should contain values.`,
     code: `EMPTY_VERSION_ARRAY_FOR_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   payloadSchemaOneRequired: {
@@ -232,7 +232,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `Business rule: Template must have at least one Payload schema associated`,
     code: `PAYLOAD_SCHEMA_ONE_REQUIRED_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   payloadSchemaNotFound: {
@@ -240,7 +240,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `The specified Payload schema does not exist or is not accessible`,
     code: `PAYLOAD_SCHEMA_NOT_FOUND_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `404`,
+    statusCode: 404,
     domain: `true`,
   },
   payloadSchemaRequired: {
@@ -248,7 +248,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `Payload schema must be provided for Template operations`,
     code: `PAYLOAD_SCHEMA_REQUIRED_TEMPLATE`,
     exception: `TemplateDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   userRequiredToCreateTemplate: {
@@ -257,7 +257,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     code: `USER_REQUIRED_TO_CREATE_TEMPLATE`,
     exception: `UnauthorizedException`,
     domain: `true`,
-    statusCode: `401`,
+    statusCode: 401,
   },
   propsRequiredToCreateTemplate: {
     message: `Properties are required to create a template`,
@@ -265,7 +265,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     code: `PROPS_REQUIRED_TO_CREATE_TEMPLATE`,
     exception: `BadRequestException`,
     domain: `true`,
-    statusCode: `400`,
+    statusCode: 400,
   },
   userRequiredToUpdateTemplate: {
     message: `User token is required to update a template`,
@@ -273,7 +273,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     code: `USER_REQUIRED_TO_UPDATE_TEMPLATE`,
     exception: `UnauthorizedException`,
     domain: `true`,
-    statusCode: `401`,
+    statusCode: 401,
   },
   TemplateUserRequired: {
     message: `User token is required for this operation on template`,
@@ -281,7 +281,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     code: `USER_REQUIRED_FOR_OPERATION_TEMPLATE`,
     exception: `UnauthorizedException`,
     domain: `true`,
-    statusCode: `401`,
+    statusCode: 401,
   },
   codeRequiredTemplate: {
     message: `Valid code is required for this operation on template`,
@@ -289,14 +289,14 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     code: `CODE_REQUIRED_FOR_OPERATION_TEMPLATE`,
     exception: `BadRequestException`,
     domain: `true`,
-    statusCode: `400`,
+    statusCode: 400,
   },
   notImplemented: {
     message: `This operation is not implemented for Template`,
     description: `The requested operation is not yet implemented for Template entities`,
     code: `NOT_IMPLEMENTED_TEMPLATE`,
     exception: `NotImplementedException`,
-    statusCode: `501`,
+    statusCode: 501,
     domain: `true`,
   },
   notFound: {
@@ -304,7 +304,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `The requested Template entity could not be found in the system`,
     code: `TEMPLATE_NOT_FOUND`,
     exception: `NotFoundException`,
-    statusCode: `404`,
+    statusCode: 404,
     domain: `true`,
   },
   createError: {
@@ -312,7 +312,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `The provided Template details are invalid or incomplete for creation`,
     code: `INVALID_TEMPLATE_CREATE_DETAILS`,
     exception: `BadRequestException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   updateError: {
@@ -320,7 +320,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `The provided Template details are invalid or incomplete for update`,
     code: `INVALID_TEMPLATE_UPDATE_DETAILS`,
     exception: `BadRequestException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   deleteError: {
@@ -328,7 +328,7 @@ export const TemplateExceptionMessage: Record<string, IException> = {
     description: `The provided Template details are invalid or the entity cannot be deleted due to business rules`,
     code: `INVALID_TEMPLATE_DELETE_DETAILS`,
     exception: `BadRequestException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
 };

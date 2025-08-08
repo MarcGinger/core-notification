@@ -26,9 +26,8 @@ export abstract class DomainException extends Error implements IException {
   public readonly description: string;
   public readonly code: string;
   public readonly exception: string;
-  public readonly statusCode: string;
+  public readonly statusCode: number;
   public readonly domain: string;
-  public readonly errorCode: string;
 
   constructor(exceptionMessage: IException, aggregateName: string) {
     super(exceptionMessage.message);
@@ -129,16 +128,9 @@ export abstract class DomainException extends Error implements IException {
   }
 
   /**
-   * Checks if this exception matches a specific error code
-   */
-  hasErrorCode(errorCode: string): boolean {
-    return this.errorCode === errorCode || this.code === errorCode;
-  }
-
-  /**
    * Checks if this exception has a specific status code
    */
   hasStatusCode(statusCode: number): boolean {
-    return parseInt(this.statusCode) === statusCode;
+    return this.statusCode === statusCode;
   }
 }

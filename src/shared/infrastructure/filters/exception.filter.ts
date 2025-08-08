@@ -17,12 +17,8 @@ import {
   Inject,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { IException } from '../../domain/exceptions';
 import { ILogger } from '../../logger';
-
-interface IError {
-  message: string;
-  errorCode: string;
-}
 
 interface IPolicyResult {
   status_code?: number;
@@ -34,12 +30,9 @@ interface IRequestWithPolicy extends Request {
   policyresult?: IPolicyResult;
 }
 
-interface IExceptionResponse {
-  statusCode: number;
+interface IExceptionResponse extends IException {
   timestamp: string;
   path: string;
-  message: string;
-  errorCode: string;
 }
 
 @Catch()
@@ -66,7 +59,7 @@ export class AllExceptionFilter implements ExceptionFilter {
   private extractExceptionDetails(
     exception: unknown,
     request: IRequestWithPolicy,
-  ): { status: number; message: IError } {
+  ): { status: number; message: IException } {
     let status = this.getHttpStatus(exception);
     let message = this.getErrorMessage(exception);
 
@@ -89,18 +82,23 @@ export class AllExceptionFilter implements ExceptionFilter {
     return HttpStatus.INTERNAL_SERVER_ERROR;
   }
 
-  private getErrorMessage(exception: unknown): IError {
+  private getErrorMessage(exception: unknown): IException {
     if (exception instanceof HttpException) {
       const response = exception.getResponse();
 
       if (typeof response === 'string') {
-        return { message: response, errorCode: '' };
+        return { message: response, statusCode: 400 };
       }
 
       if (typeof response === 'object' && response !== null) {
         return {
           message: (response as any).message ?? 'Unknown error',
-          errorCode: (response as any).errorCode ?? '',
+          description:
+            (response as any).description ?? 'No description provided',
+          code: (response as any).code ?? 'UNKNOWN_ERROR',
+          exception: (response as any).exception ?? 'HttpException',
+          statusCode: (response as any).statusCode ?? 400,
+          domain: (response as any).domain ?? 'INFRASTRUCTURE',
         };
       }
     }
@@ -114,7 +112,7 @@ export class AllExceptionFilter implements ExceptionFilter {
 
   private buildErrorResponse(
     status: number,
-    message: IError,
+    message: IException,
     request: IRequestWithPolicy,
   ): IExceptionResponse {
     return {
@@ -122,13 +120,19 @@ export class AllExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url ?? '',
       message: message.message,
+
+      description: message.description,
+      code: message.errorCode,
+      exception: 'AllExceptionFilter',
+      statusCode: status,
+      domain: 'true',
       errorCode: message.errorCode,
     };
   }
 
   private logMessage(
     request: IRequestWithPolicy,
-    message: IError,
+    message: IException,
     status: number,
     exception: unknown,
   ): void {

@@ -16,7 +16,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `Authentication is required to modify Message relationships`,
     code: `USER_REQUIRED_FOR_OPERATION_MESSAGE`,
     exception: `UnauthorizedException`,
-    statusCode: `401`,
+    statusCode: 401,
     domain: `true`,
   },
   userRequiredForUpdates: {
@@ -24,7 +24,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `Authentication is required for property updates on Message`,
     code: `USER_REQUIRED_FOR_UPDATES_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   userRequiredForDeletion: {
@@ -32,7 +32,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `Authentication is required to delete Message entities`,
     code: `USER_REQUIRED_FOR_DELETION_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   userRequiredForEnable: {
@@ -40,7 +40,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `Authentication is required to enable Message entities`,
     code: `USER_REQUIRED_FOR_ENABLE_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   userRequiredForDisable: {
@@ -48,7 +48,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `Authentication is required to disable Message entities`,
     code: `USER_REQUIRED_FOR_DISABLE_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   userRequiredForStatus: {
@@ -56,7 +56,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `Authentication is required to update Message status`,
     code: `USER_REQUIRED_FOR_STATUS_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   invalidStatusValue: {
@@ -64,7 +64,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `A valid status value must be provided when updating Message status`,
     code: `INVALID_STATUS_VALUE_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   cannotDeactivateDefault: {
@@ -72,7 +72,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `Business rule violation: default entities cannot be deactivated without setting another as default`,
     code: `CANNOT_DEACTIVATE_DEFAULT_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `409`,
+    statusCode: 409,
     domain: `true`,
   },
   cannotSetInactiveAsDefault: {
@@ -80,7 +80,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `Business rule violation: inactive entities cannot be set as default`,
     code: `CANNOT_SET_INACTIVE_AS_DEFAULT_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `409`,
+    statusCode: 409,
     domain: `true`,
   },
   fieldConfigCodeRequired: {
@@ -88,7 +88,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `The config_code field is required for Message and must be a non-empty string`,
     code: `INVALID_CONFIG_CODE_VALUE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldChannelRequired: {
@@ -96,7 +96,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `The channel field is required for Message and must be a non-empty string`,
     code: `INVALID_CHANNEL_VALUE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldStatusRequired: {
@@ -104,7 +104,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `The status field is required for Message`,
     code: `INVALID_STATUS_VALUE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldRetryCountRequired: {
@@ -112,7 +112,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `The retry_count field is required for Message and must be a valid number`,
     code: `INVALID_RETRY_COUNT_VALUE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldIdRequired: {
@@ -120,7 +120,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `This error occurs when creating a MessageIdentifier with an invalid id value.`,
     code: `FIELD_ID_REQUIRED_FOR_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   fieldIdEmpty: {
@@ -128,7 +128,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `This error occurs when creating a MessageIdentifier with an empty or whitespace-only id value.`,
     code: `FIELD_ID_EMPTY_FOR_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   invalidRecordOfInputType: {
@@ -136,7 +136,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `This error occurs when trying to convert a string to a Record<string, IMessage> in toRecordOfMessages function.`,
     code: `INVALID_RECORD_OF_INPUT_TYPE_FOR_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   invalidArrayOfInputType: {
@@ -144,7 +144,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `This error occurs when trying to convert a string to an array of IMessage in toArrayOfMessages function.`,
     code: `INVALID_ARRAY_OF_INPUT_TYPE_FOR_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   invalidStringConversion: {
@@ -152,7 +152,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `This error occurs when trying to convert a string to IMessage but no valid string identifier column is available.`,
     code: `INVALID_STRING_CONVERSION_FOR_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   invalidInputTypeForConversion: {
@@ -160,7 +160,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `This error occurs when trying to convert a string to IMessage in toMessage function when string conversion is not supported.`,
     code: `INVALID_INPUT_TYPE_FOR_CONVERSION_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   requiredConfigCode: {
@@ -168,7 +168,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `This error occurs when validating a Message and the required field configCode is missing or null.`,
     code: `REQUIRED_CONFIG_CODE_FOR_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   requiredChannel: {
@@ -176,7 +176,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `This error occurs when validating a Message and the required field channel is missing or null.`,
     code: `REQUIRED_CHANNEL_FOR_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   requiredStatus: {
@@ -184,7 +184,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `This error occurs when validating a Message and the required field status is missing or null.`,
     code: `REQUIRED_STATUS_FOR_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   requiredRetryCount: {
@@ -192,7 +192,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `This error occurs when validating a Message and the required field retryCount is missing or null.`,
     code: `REQUIRED_RETRY_COUNT_FOR_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   emptyRetryCountArray: {
@@ -200,7 +200,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `This error occurs when validating a Message and the retryCount array is empty when it should contain values.`,
     code: `EMPTY_RETRY_COUNT_ARRAY_FOR_MESSAGE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   userRequiredToCreateMessage: {
@@ -209,7 +209,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     code: `USER_REQUIRED_TO_CREATE_MESSAGE`,
     exception: `UnauthorizedException`,
     domain: `true`,
-    statusCode: `401`,
+    statusCode: 401,
   },
   propsRequiredToCreateMessage: {
     message: `Properties are required to create a message`,
@@ -217,7 +217,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     code: `PROPS_REQUIRED_TO_CREATE_MESSAGE`,
     exception: `BadRequestException`,
     domain: `true`,
-    statusCode: `400`,
+    statusCode: 400,
   },
   userRequiredToUpdateMessage: {
     message: `User token is required to update a message`,
@@ -225,7 +225,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     code: `USER_REQUIRED_TO_UPDATE_MESSAGE`,
     exception: `UnauthorizedException`,
     domain: `true`,
-    statusCode: `401`,
+    statusCode: 401,
   },
   MessageUserRequired: {
     message: `User token is required for this operation on message`,
@@ -233,7 +233,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     code: `USER_REQUIRED_FOR_OPERATION_MESSAGE`,
     exception: `UnauthorizedException`,
     domain: `true`,
-    statusCode: `401`,
+    statusCode: 401,
   },
   idRequiredMessage: {
     message: `Valid id is required for this operation on message`,
@@ -241,14 +241,14 @@ export const MessageExceptionMessage: Record<string, IException> = {
     code: `ID_REQUIRED_FOR_OPERATION_MESSAGE`,
     exception: `BadRequestException`,
     domain: `true`,
-    statusCode: `400`,
+    statusCode: 400,
   },
   notImplemented: {
     message: `This operation is not implemented for Message`,
     description: `The requested operation is not yet implemented for Message entities`,
     code: `NOT_IMPLEMENTED_MESSAGE`,
     exception: `NotImplementedException`,
-    statusCode: `501`,
+    statusCode: 501,
     domain: `true`,
   },
   notFound: {
@@ -256,7 +256,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `The requested Message entity could not be found in the system`,
     code: `MESSAGE_NOT_FOUND`,
     exception: `NotFoundException`,
-    statusCode: `404`,
+    statusCode: 404,
     domain: `true`,
   },
   createError: {
@@ -264,7 +264,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `The provided Message details are invalid or incomplete for creation`,
     code: `INVALID_MESSAGE_CREATE_DETAILS`,
     exception: `BadRequestException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   updateError: {
@@ -272,7 +272,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `The provided Message details are invalid or incomplete for update`,
     code: `INVALID_MESSAGE_UPDATE_DETAILS`,
     exception: `BadRequestException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   deleteError: {
@@ -280,7 +280,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `The provided Message details are invalid or the entity cannot be deleted due to business rules`,
     code: `INVALID_MESSAGE_DELETE_DETAILS`,
     exception: `BadRequestException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   invalidScheduledAtDate: {
@@ -288,7 +288,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `The scheduled date must be a valid Date object and not NaN`,
     code: `INVALID_SCHEDULED_AT_DATE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
   scheduledAtMustBeInFuture: {
@@ -296,7 +296,7 @@ export const MessageExceptionMessage: Record<string, IException> = {
     description: `The scheduled date must be after the current time`,
     code: `SCHEDULED_AT_MUST_BE_IN_FUTURE`,
     exception: `MessageDomainException`,
-    statusCode: `400`,
+    statusCode: 400,
     domain: `true`,
   },
 };

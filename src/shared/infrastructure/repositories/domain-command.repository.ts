@@ -10,12 +10,12 @@
 
 import { BadRequestException, NotFoundException, Type } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ILogger } from 'src/shared/logger';
 import { AggregateRoot, IEvent } from '@nestjs/cqrs';
+import { IUserToken } from 'src/shared/auth';
+import { IException } from 'src/shared/domain/exceptions';
+import { ILogger } from 'src/shared/logger';
 import { IAggregateWithDto } from '../../domain';
 import { InfrastructureRepository } from './infrastructure.repository';
-import { IException } from 'src/shared/domain/exceptions';
-import { IUserToken } from 'src/shared/auth';
 
 /**
  * Abstract base class for CQRS command repositories without saga support
@@ -132,7 +132,7 @@ export abstract class DomainCommandRepository<
         description: 'An error occurred while creating the aggregate',
         code: 'CREATE_ERROR',
         exception: 'DomainCommandRepositoryCreateException',
-        statusCode: '400',
+        statusCode: 400,
         domain: 'true',
       });
 

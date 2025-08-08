@@ -8,14 +8,14 @@
  * Confidential and proprietary.
  */
 
-import { ConfigService } from '@nestjs/config';
-import { ILogger } from 'src/shared/logger';
-import { AggregateRoot, IEvent } from '@nestjs/cqrs';
-import { IAggregateWithDto, ISagaContext } from '../../domain';
 import { BadRequestException, NotFoundException, Type } from '@nestjs/common';
-import { InfrastructureRepository } from './infrastructure.repository';
-import { IException } from 'src/shared/domain/exceptions';
+import { ConfigService } from '@nestjs/config';
+import { AggregateRoot, IEvent } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
+import { IException } from 'src/shared/domain/exceptions';
+import { ILogger } from 'src/shared/logger';
+import { IAggregateWithDto, ISagaContext } from '../../domain';
+import { InfrastructureRepository } from './infrastructure.repository';
 
 /**
  * Abstract base class for event sourcing repositories with saga support
@@ -188,7 +188,7 @@ export abstract class SagaCommandRepository<
           description: 'An error occurred while creating the aggregate',
           code: 'CREATE_SAGA_ERROR',
           exception: 'DomainSagaRepositoryCreateException',
-          statusCode: '400',
+          statusCode: 400,
           domain: 'true',
         },
         duration,
@@ -268,7 +268,7 @@ export abstract class SagaCommandRepository<
           description: 'An error occurred while updating the aggregate',
           code: 'UPDATE_ERROR',
           exception: 'DomainSagaRepositoryUpdateException',
-          statusCode: '400',
+          statusCode: 400,
           domain: 'true',
         },
         duration,

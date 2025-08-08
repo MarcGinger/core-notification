@@ -208,7 +208,7 @@ export abstract class InfrastructureRepository<
         description: 'Unknown error',
         code: 'UNKNOWN_ERROR',
         exception: '',
-        statusCode: '500',
+        statusCode: 500,
         domain: 'INFRASTRUCTURE',
       };
     } else {

@@ -13,6 +13,6 @@ export interface IException {
   description: string;
   code: string;
   exception: string;
-  statusCode: string;
+  statusCode: number;
   domain: string;
 }
