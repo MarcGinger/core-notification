@@ -9,22 +9,23 @@
  */
 
 import { Module } from '@nestjs/common';
-import { LoggerModule } from 'src/shared/logger';
 import { EventStoreSharedModule } from 'src/shared/infrastructure';
+import { LoggerModule } from 'src/shared/logger';
+import { GenericMessageQueueModule } from 'src/shared/message-queue';
+import { TransactionCommands } from './application/commands';
+import { TransactionApplicationService } from './application/services';
+import { TransactionUseCases } from './application/usecases';
 import { TransactionExceptionMessage } from './domain/exceptions';
 import { TransactionDomainService } from './domain/services';
-import { TransactionCommands } from './application/commands';
-import { TransactionUseCases } from './application/usecases';
-import { TransactionApplicationService } from './application/services';
-import { TransactionRepository } from './infrastructure/repositories';
 import { TransactionController } from './infrastructure/controllers';
 import {
   TransactionMemoryProjection,
   TransactionProjectionManager,
 } from './infrastructure/projectors';
+import { TransactionRepository } from './infrastructure/repositories';
 
 @Module({
-  imports: [EventStoreSharedModule, LoggerModule],
+  imports: [EventStoreSharedModule, LoggerModule, GenericMessageQueueModule],
   controllers: [TransactionController],
   providers: [
     TransactionDomainService,
