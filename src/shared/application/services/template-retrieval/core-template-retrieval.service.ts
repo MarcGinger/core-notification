@@ -15,7 +15,7 @@ import {
 } from '../../../../core-template-manager/template/domain';
 import { IUserToken } from '../../../auth';
 import { ILogger } from '../../../logger';
-import { TemplateRepository } from '../repositories';
+import { TemplateRepository } from './repositories';
 import {
   ITemplateContent,
   ITemplateRetrievalOptions,

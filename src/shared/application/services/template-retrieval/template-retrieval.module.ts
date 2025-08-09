@@ -10,6 +10,8 @@
 
 import { Module } from '@nestjs/common';
 import { TEMPLATE_RETRIEVAL_SERVICE } from '.';
+import { AzureBlobStorageModule } from '../../../infrastructure/azure-storage';
+import { RedisConfigModule } from '../../../infrastructure/redis';
 import { LoggerModule } from '../../../logger';
 import { CoreTemplateRetrievalService } from './simple-template-retrieval.service';
 
@@ -19,13 +21,17 @@ import { CoreTemplateRetrievalService } from './simple-template-retrieval.servic
  * that can be used by any template renderer across the application.
  */
 @Module({
-  imports: [LoggerModule],
+  imports: [LoggerModule, RedisConfigModule, AzureBlobStorageModule],
   providers: [
     {
       provide: TEMPLATE_RETRIEVAL_SERVICE,
       useClass: CoreTemplateRetrievalService,
     },
   ],
-  exports: [TEMPLATE_RETRIEVAL_SERVICE],
+  exports: [
+    TEMPLATE_RETRIEVAL_SERVICE,
+    RedisConfigModule,
+    AzureBlobStorageModule,
+  ],
 })
 export class TemplateRetrievalModule {}

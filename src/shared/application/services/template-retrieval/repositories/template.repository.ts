@@ -17,9 +17,8 @@ import {
   ITemplate,
   SnapshotTemplateProps,
   TemplateExceptionMessage,
-} from '../../../../core-template-manager/template/domain';
-import { RedisUtilityService } from '../../../infrastructure/redis';
-
+} from '../../../../../core-template-manager/template/domain';
+import { RedisUtilityService } from '../../../../infrastructure/redis';
 const COMPONENT_NAME = 'TemplateRepository';
 
 export class TemplateRepository extends InfrastructureRepository<

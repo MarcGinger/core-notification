@@ -10,6 +10,8 @@
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IUserToken } from '../../../auth';
+import { AzureBlobStorageService } from '../../../infrastructure/azure-storage';
+import { RedisUtilityService } from '../../../infrastructure/redis';
 import { ILogger } from '../../../logger';
 import {
   ITemplateContent,
@@ -28,7 +30,11 @@ import {
 export class CoreTemplateRetrievalService implements ITemplateRetrievalService {
   private readonly logger = new Logger(CoreTemplateRetrievalService.name);
 
-  constructor(@Inject('ILogger') private readonly iLogger: ILogger) {}
+  constructor(
+    @Inject('ILogger') private readonly iLogger: ILogger,
+    private readonly redisUtilityService: RedisUtilityService,
+    private readonly azureBlobStorageService: AzureBlobStorageService,
+  ) {}
 
   /**
    * Retrieves a single template by code using mock data

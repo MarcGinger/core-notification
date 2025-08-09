@@ -9,13 +9,11 @@
  */
 
 import { Module } from '@nestjs/common';
-import { CoreTemplateRetrievalModule } from 'src/shared/application/core-template-retrieval.module';
+import { TemplateRetrievalModule } from 'src/shared/application/services/template-retrieval';
 import {
-  AzureBlobStorageModule,
   BullMQModule,
   EventProcessingModule,
   EventStoreSharedModule,
-  RedisConfigModule,
 } from 'src/shared/infrastructure';
 import { LoggerModule } from 'src/shared/logger';
 import { MessageCommands } from './application/commands';
@@ -54,10 +52,7 @@ import { MessageQueueService } from './infrastructure/services/message-queue.ser
     EventProcessingModule,
     BullMQModule,
     LoggerModule,
-    CoreTemplateRetrievalModule,
-
-    RedisConfigModule,
-    AzureBlobStorageModule,
+    TemplateRetrievalModule,
   ],
   controllers: [MessageController, SlackMessageRequestController],
   providers: [

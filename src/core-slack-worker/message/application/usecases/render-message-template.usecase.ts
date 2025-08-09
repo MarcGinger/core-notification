@@ -8,8 +8,12 @@
  * Confidential and proprietary.
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IUserToken } from 'src/shared/auth';
+import {
+  ITemplateRetrievalService,
+  TEMPLATE_RETRIEVAL_SERVICE,
+} from '../../../../shared/application/services/template-retrieval';
 import { CoreSlackWorkerLoggingHelper } from '../../../shared/domain/value-objects';
 import { IMessage } from '../../domain';
 import { MessageTemplateDomainService } from '../../domain/services/message-template.domain-service';
@@ -30,6 +34,8 @@ export class RenderMessageTemplateUseCase {
 
   constructor(
     private readonly messageTemplateDomainService: MessageTemplateDomainService,
+    @Inject(TEMPLATE_RETRIEVAL_SERVICE)
+    private readonly templateRetrievalService: ITemplateRetrievalService,
   ) {}
 
   /**
@@ -65,6 +71,16 @@ export class RenderMessageTemplateUseCase {
     );
 
     try {
+      const template = await this.templateRetrievalService.getTemplate(
+        user,
+        props.templateCode!,
+      );
+
+      this.logger.log(
+        template,
+        `Successfully retrieved template: templateCode '${props.templateCode}'`,
+      );
+
       // Check if template rendering is needed using domain service
       if (!this.messageTemplateDomainService.shouldRenderTemplate(props)) {
         const defaultMessage =
@@ -91,8 +107,6 @@ export class RenderMessageTemplateUseCase {
           successContext,
           `No template rendering needed - using default message: length ${defaultMessage.length}`,
         );
-
-        return defaultMessage;
       }
 
       // Load template content from template repository using the generic service
