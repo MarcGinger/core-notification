@@ -11,6 +11,9 @@
 // Module exports
 export { GenericMessageQueueModule } from './generic-message-queue.module';
 
+// Configuration exports
+export * from './domain/interfaces';
+
 // Handler exports
 export { MessageQueueEventHandler } from './infrastructure/event-handlers/message-queue-event.handler';
 

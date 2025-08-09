@@ -13,6 +13,7 @@ import {
   Injectable,
   OnModuleDestroy,
   OnModuleInit,
+  Optional,
 } from '@nestjs/common';
 import { Subscription } from 'rxjs';
 import {
@@ -21,6 +22,11 @@ import {
 } from 'src/shared/infrastructure/event-store';
 import { ILogger } from 'src/shared/logger';
 import { IMessageQueue } from '../../domain/entities';
+import {
+  EventSubscriptionConfig,
+  MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG,
+  MessageQueueEventSubscriptionConfig,
+} from '../../domain/interfaces';
 import { MessageQueueWorkerLoggingHelper } from '../../domain/value-objects';
 import { MessageQueueEventHandler } from './message-queue-event.handler';
 
@@ -45,6 +51,9 @@ export class MessageQueueEventSubscriptionManager
     @Inject('ILogger') private readonly logger: ILogger,
     private readonly eventOrchestration: EventOrchestrationService,
     private readonly sendMessageQueueEventHandler: MessageQueueEventHandler,
+    @Optional()
+    @Inject(MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG)
+    private readonly subscriptionConfig?: MessageQueueEventSubscriptionConfig,
   ) {}
 
   /**
@@ -104,6 +113,25 @@ export class MessageQueueEventSubscriptionManager
   }
 
   /**
+   * Get event subscriptions configuration
+   */
+  private getEventSubscriptions(): EventSubscriptionConfig[] {
+    // Use injected configuration if available, otherwise fall back to default
+    if (this.subscriptionConfig?.eventSubscriptions) {
+      return this.subscriptionConfig.eventSubscriptions;
+    }
+
+    // Default subscriptions for backward compatibility
+    return [
+      {
+        streamPattern: '$et-message-queue.created.v1',
+        purpose: 'MessageCreatedEvent subscription - all aggregates',
+        description: 'message-queue.created.v1 events',
+      },
+    ];
+  }
+
+  /**
    * Start the message projection with catchup and subscription
    */
   startProjection(): void {
@@ -120,38 +148,8 @@ export class MessageQueueEventSubscriptionManager
     try {
       this.isRunning = true;
 
-      // Subscribe to multiple event types that should trigger message queue routing
-      const eventSubscriptions = [
-        {
-          streamPattern: '$et-message-queue.created.v1',
-          purpose: 'MessageCreatedEvent subscription - all aggregates',
-          description: 'message-queue.created.v1 events',
-        },
-        {
-          streamPattern: '$et-transaction.created.v1',
-          purpose:
-            'TransactionCreatedEvent subscription - route to notifications',
-          description: 'transaction.created.v1 events',
-        },
-        {
-          streamPattern: '$et-transaction.completed.v1',
-          purpose:
-            'TransactionCompletedEvent subscription - route to notifications',
-          description: 'transaction.completed.v1 events',
-        },
-        {
-          streamPattern: '$et-transaction.failed.v1',
-          purpose:
-            'TransactionFailedEvent subscription - route to notifications',
-          description: 'transaction.failed.v1 events',
-        },
-        {
-          streamPattern: '$et-transaction.queued.v1',
-          purpose:
-            'TransactionQueuedEvent subscription - route to notifications',
-          description: 'transaction.queued.v1 events',
-        },
-      ];
+      // Get event subscriptions from configuration
+      const eventSubscriptions = this.getEventSubscriptions();
 
       // Set up subscriptions for each event type
       for (const subscription of eventSubscriptions) {

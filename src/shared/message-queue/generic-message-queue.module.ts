@@ -8,10 +8,14 @@
  * Confidential and proprietary.
  */
 
-import { Module } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import { BullMQModule } from 'src/shared/infrastructure/bullmq';
 import { EventStoreSharedModule } from 'src/shared/infrastructure/event-store';
 import { LoggerModule } from 'src/shared/logger';
+import {
+  MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG,
+  MessageQueueEventSubscriptionConfig,
+} from './domain/interfaces';
 import {
   DataProcessingStrategy,
   EmailMessageStrategy,
@@ -57,4 +61,54 @@ import {
     DataProcessingStrategy,
   ],
 })
-export class GenericMessageQueueModule {}
+export class GenericMessageQueueModule {
+  /**
+   * Register async configuration for event subscriptions
+   */
+  static registerAsync(options: {
+    useFactory: () =>
+      | MessageQueueEventSubscriptionConfig
+      | Promise<MessageQueueEventSubscriptionConfig>;
+    inject?: any[];
+  }): DynamicModule {
+    return {
+      module: GenericMessageQueueModule,
+      imports: [
+        BullMQModule, // Provides queue access
+        LoggerModule, // Provides logging
+        EventStoreSharedModule, // Provides EventStore integration
+      ],
+      providers: [
+        // Configuration provider
+        {
+          provide: MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG,
+          useFactory: options.useFactory,
+          inject: options.inject || [],
+        },
+
+        // Routing strategies
+        SlackMessageStrategy,
+        EmailMessageStrategy,
+        NotificationStrategy,
+        TransactionNotificationStrategy,
+        DataProcessingStrategy,
+
+        // Main event handler that uses strategies
+        MessageQueueEventHandler,
+
+        // Event subscription manager
+        MessageQueueEventSubscriptionManager,
+      ],
+      exports: [
+        // Export for use in other modules
+        MessageQueueEventHandler,
+        MessageQueueEventSubscriptionManager,
+        SlackMessageStrategy,
+        EmailMessageStrategy,
+        NotificationStrategy,
+        TransactionNotificationStrategy,
+        DataProcessingStrategy,
+      ],
+    };
+  }
+}

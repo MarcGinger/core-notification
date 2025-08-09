@@ -17,6 +17,7 @@ import { TransactionApplicationService } from './application/services';
 import { TransactionUseCases } from './application/usecases';
 import { TransactionExceptionMessage } from './domain/exceptions';
 import { TransactionDomainService } from './domain/services';
+import { createTransactionEventSubscriptionConfig } from './infrastructure/config/transaction-event-subscription.config';
 import { TransactionController } from './infrastructure/controllers';
 import {
   TransactionMemoryProjection,
@@ -25,7 +26,13 @@ import {
 import { TransactionRepository } from './infrastructure/repositories';
 
 @Module({
-  imports: [EventStoreSharedModule, LoggerModule, GenericMessageQueueModule],
+  imports: [
+    EventStoreSharedModule,
+    LoggerModule,
+    GenericMessageQueueModule.registerAsync({
+      useFactory: createTransactionEventSubscriptionConfig,
+    }),
+  ],
   controllers: [TransactionController],
   providers: [
     TransactionDomainService,

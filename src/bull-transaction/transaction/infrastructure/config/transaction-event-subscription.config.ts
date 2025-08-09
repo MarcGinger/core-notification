@@ -1,0 +1,51 @@
+/**
+ * Copyright (c) 2025 Marc Ginger. All rights reserved.
+ *
+ * This file is part of a proprietary NestJS system developed by Marc Ginger.
+ * Unauthorized copying, modification, distribution, or use of this file,
+ * via any medium, is strictly prohibited and may result in legal action.
+ *
+ * Confidential and proprietary.
+ */
+
+import { MessageQueueEventSubscriptionConfig } from 'src/shared/message-queue';
+
+/**
+ * Configuration factory for transaction event subscriptions
+ */
+export const createTransactionEventSubscriptionConfig =
+  (): MessageQueueEventSubscriptionConfig => {
+    return {
+      eventSubscriptions: [
+        {
+          streamPattern: '$et-message-queue.created.v1',
+          purpose: 'MessageCreatedEvent subscription - all aggregates',
+          description: 'message-queue.created.v1 events',
+        },
+        {
+          streamPattern: '$et-transaction.created.v1',
+          purpose:
+            'TransactionCreatedEvent subscription - route to notifications',
+          description: 'transaction.created.v1 events',
+        },
+        {
+          streamPattern: '$et-transaction.completed.v1',
+          purpose:
+            'TransactionCompletedEvent subscription - route to notifications',
+          description: 'transaction.completed.v1 events',
+        },
+        {
+          streamPattern: '$et-transaction.failed.v1',
+          purpose:
+            'TransactionFailedEvent subscription - route to notifications',
+          description: 'transaction.failed.v1 events',
+        },
+        {
+          streamPattern: '$et-transaction.queued.v1',
+          purpose:
+            'TransactionQueuedEvent subscription - route to notifications',
+          description: 'transaction.queued.v1 events',
+        },
+      ],
+    };
+  };
