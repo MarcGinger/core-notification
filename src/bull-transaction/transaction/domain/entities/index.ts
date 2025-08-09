@@ -8,4 +8,5 @@
  * Confidential and proprietary.
  */
 
+export * from './transaction-status.enum';
 export * from './transaction.model';

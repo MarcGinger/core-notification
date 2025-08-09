@@ -9,4 +9,10 @@
  */
 
 export * from './create.event';
+export * from './transaction-completed.event';
 export * from './transaction-domain.event';
+export * from './transaction-failed.event';
+export * from './transaction-queued.event';
+export * from './transaction-retrying.event';
+export * from './transaction-scheduled.event';
+export * from './transaction-updated.event';

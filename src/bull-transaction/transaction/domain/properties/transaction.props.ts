@@ -8,6 +8,7 @@
  * Confidential and proprietary.
  */
 
+import { TransactionStatusEnum } from '../entities';
 import { TransactionIdentifier } from '../value-objects';
 
 // generate-domain-properties
@@ -16,5 +17,11 @@ export interface TransactionProps {
   readonly from: string;
   readonly to: string;
   readonly amount: number;
+  readonly status: TransactionStatusEnum;
   readonly scheduledAt?: Date;
+  readonly processedAt?: Date;
+  readonly failureReason?: string;
+  readonly correlationId?: string;
+  readonly retryCount: number;
+  readonly priority?: number;
 }

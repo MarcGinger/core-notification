@@ -8,31 +8,31 @@
  * Confidential and proprietary.
  */
 
-import { ILogger } from 'src/shared/logger';
-import { IUserToken } from 'src/shared/auth';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ITransaction } from '../../domain/entities';
-import {
-  TransactionDomainException,
-  TransactionExceptionMessage,
-} from '../../domain/exceptions';
 import { IEvent } from '@nestjs/cqrs';
-import { Transaction } from '../../domain/aggregates';
+import { IUserToken } from 'src/shared/auth';
+import { DomainEvent, ISagaContext } from 'src/shared/domain';
 import {
   EventOrchestrationService,
   SnapshotService,
 } from 'src/shared/infrastructure/event-store';
-import { TransactionMemoryProjection } from '../projectors';
-import { TransactionCreatedEvent } from '../../domain/events';
-import { TransactionProjectionKeys } from '../../domain/value-objects/transaction-projection-keys';
-import { DomainEvent, ISagaContext } from 'src/shared/domain';
 import { SagaCommandRepository } from 'src/shared/infrastructure/repositories';
+import { ILogger } from 'src/shared/logger';
 import {
   BullTransactionLoggingHelper,
   BullTransactionServiceConstants,
 } from '../../../shared/domain/value-objects';
+import { Transaction } from '../../domain/aggregates';
+import { ITransaction } from '../../domain/entities';
+import { TransactionCreatedEvent } from '../../domain/events';
+import {
+  TransactionDomainException,
+  TransactionExceptionMessage,
+} from '../../domain/exceptions';
 import { SnapshotTransactionProps } from '../../domain/properties';
+import { TransactionProjectionKeys } from '../../domain/value-objects/transaction-projection-keys';
+import { TransactionMemoryProjection } from '../projectors';
 
 const COMPONENT_NAME = 'TransactionRepository';
 
@@ -455,7 +455,13 @@ export class TransactionRepository extends SagaCommandRepository<
         from: storedTransaction.from,
         to: storedTransaction.to,
         amount: storedTransaction.amount,
+        status: storedTransaction.status,
         scheduledAt: storedTransaction.scheduledAt,
+        processedAt: storedTransaction.processedAt,
+        failureReason: storedTransaction.failureReason,
+        correlationId: storedTransaction.correlationId,
+        retryCount: storedTransaction.retryCount,
+        priority: storedTransaction.priority,
       });
     } catch (error) {
       this.logger.error(

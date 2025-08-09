@@ -9,9 +9,10 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { IUserToken } from 'src/shared/auth';
 import { randomUUID } from 'crypto';
+import { IUserToken } from 'src/shared/auth';
 import { Transaction } from '../aggregates';
+import { TransactionStatusEnum } from '../entities';
 import { CreateTransactionProps } from '../properties';
 import { TransactionIdentifier } from '../value-objects';
 
@@ -61,7 +62,9 @@ export class TransactionDomainService {
       from: createData.from,
       to: createData.to,
       amount: createData.amount,
+      status: TransactionStatusEnum.CREATED,
       scheduledAt: createData.scheduledAt,
+      retryCount: 0,
     });
 
     return Promise.resolve(transaction);

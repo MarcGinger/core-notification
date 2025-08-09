@@ -8,7 +8,7 @@
  * Confidential and proprietary.
  */
 
-import { ITransaction } from '../../domain';
+import { ITransaction, TransactionStatusEnum } from '../../domain';
 import {
   ApiTransactionAmount,
   ApiTransactionFrom,
@@ -33,6 +33,18 @@ export class TransactionResponse implements ITransaction {
   @ApiTransactionAmount({ required: true })
   readonly amount: number;
 
+  readonly status: TransactionStatusEnum;
+
   @ApiTransactionScheduledAt()
   readonly scheduledAt?: Date;
+
+  readonly processedAt?: Date;
+
+  readonly failureReason?: string;
+
+  readonly correlationId?: string;
+
+  readonly retryCount: number;
+
+  readonly priority?: number;
 }

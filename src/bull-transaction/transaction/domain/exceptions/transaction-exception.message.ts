@@ -107,6 +107,14 @@ export const TransactionExceptionMessage: Record<string, IException> = {
     statusCode: 400,
     domain: `true`,
   },
+  fieldStatusRequired: {
+    message: `Status is required`,
+    description: `The status field is required for Transaction and must be a valid TransactionStatusEnum`,
+    code: `FIELD_STATUS_REQUIRED_FOR_TRANSACTION`,
+    exception: `TransactionDomainException`,
+    statusCode: 400,
+    domain: `true`,
+  },
   fieldIdRequired: {
     message: `Id is required and cannot be empty`,
     description: `This error occurs when creating a TransactionIdentifier with an invalid id value.`,

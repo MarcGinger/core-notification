@@ -8,10 +8,18 @@
  * Confidential and proprietary.
  */
 
+import { TransactionStatusEnum } from './transaction-status.enum';
+
 export interface ITransaction {
   readonly id: string;
   readonly from: string;
   readonly to: string;
   readonly amount: number;
+  readonly status: TransactionStatusEnum;
   readonly scheduledAt?: Date;
+  readonly processedAt?: Date;
+  readonly failureReason?: string;
+  readonly correlationId?: string;
+  readonly retryCount: number;
+  readonly priority?: number;
 }
