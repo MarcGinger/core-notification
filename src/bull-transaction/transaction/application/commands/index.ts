@@ -10,8 +10,13 @@
 
 // generate-commands
 import { CreateTransactionHandler } from './create/create-transaction.handler';
+import { SendTransactionNotificationHandler } from './send-notification/send-transaction-notification.handler';
 
 // application/commands/index.ts
-export const TransactionCommands = [CreateTransactionHandler];
+export const TransactionCommands = [
+  CreateTransactionHandler,
+  SendTransactionNotificationHandler,
+];
 
 export * from './create/create-transaction.command';
+export * from './send-notification/send-transaction-notification.command';

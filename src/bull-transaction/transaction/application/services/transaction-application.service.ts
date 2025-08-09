@@ -11,8 +11,10 @@
 import { Injectable } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
-import { MessageQueueEventHandler } from 'src/shared/message-queue';
-import { CreateTransactionCommand } from '../../application/commands';
+import {
+  CreateTransactionCommand,
+  SendTransactionNotificationCommand,
+} from '../../application/commands';
 import { ITransaction } from '../../domain/entities';
 import { CreateTransactionProps } from '../../domain/properties';
 
@@ -20,10 +22,7 @@ import { CreateTransactionProps } from '../../domain/properties';
 
 @Injectable()
 export class TransactionApplicationService {
-  constructor(
-    private readonly commandBus: CommandBus,
-    private readonly messageQueueHandler: MessageQueueEventHandler,
-  ) {}
+  constructor(private readonly commandBus: CommandBus) {}
 
   async create(
     user: IUserToken,
@@ -34,67 +33,11 @@ export class TransactionApplicationService {
       ITransaction
     >(new CreateTransactionCommand(user, dto));
 
-    // Send notification via message queue
-    await this.sendTransactionNotification(entity, user, 'created');
+    // Send notification via command bus (proper CQRS pattern)
+    await this.commandBus.execute(
+      new SendTransactionNotificationCommand(entity, user, 'created'),
+    );
 
     return entity;
-  }
-
-  /**
-   * Send transaction notification via generic message queue
-   * The message will be automatically routed to the appropriate queue
-   * based on the messageType and payload content
-   */
-  private async sendTransactionNotification(
-    transaction: ITransaction,
-    user: IUserToken,
-    action: 'created' | 'updated' | 'completed' | 'failed',
-  ): Promise<void> {
-    try {
-      const messageData = {
-        id: `transaction-${transaction.id}-${action}-${Date.now()}`,
-        payload: {
-          messageType: 'notification',
-          notificationType: 'transaction',
-          transactionId: transaction.id,
-          action,
-          transaction: {
-            id: transaction.id,
-            // Add other relevant transaction properties here
-          },
-          user: {
-            id: user.sub,
-            tenant: user.tenant,
-          },
-          timestamp: new Date().toISOString(),
-        },
-        correlationId: `transaction-${transaction.id}`,
-        priority: action === 'failed' ? 1 : 5, // Higher priority for failures
-      };
-
-      const mockMeta = {
-        occurredAt: new Date(),
-        aggregateId: transaction.id,
-        stream: `transaction-${transaction.id}`,
-        eventType: `transaction.${action}.v1`,
-        userId: user.sub,
-        tenant: user.tenant || 'default',
-        tenantId: user.tenant || 'default',
-        username: user.preferred_username || user.sub,
-        correlationId: `transaction-${transaction.id}`,
-        aggregateType: 'Transaction',
-        context: 'bull-transaction',
-        service: 'bull-transaction',
-        revision: undefined,
-      };
-
-      await this.messageQueueHandler.handleMessageQueueEvent(
-        messageData,
-        mockMeta,
-      );
-    } catch (error) {
-      // Log error but don't fail the transaction creation
-      console.error('Failed to send transaction notification:', error);
-    }
   }
 }
