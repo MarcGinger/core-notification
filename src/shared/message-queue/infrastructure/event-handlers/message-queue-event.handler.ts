@@ -291,6 +291,112 @@ export class NotificationStrategy
 }
 
 /**
+ * Transaction notification job data structure
+ */
+export interface TransactionNotificationJobData {
+  transactionId: string;
+  action: 'created' | 'completed' | 'failed' | 'queued' | 'retrying';
+  transaction: {
+    from: string;
+    to: string;
+    amount: number;
+    status: string;
+  };
+  tenant: string;
+  userId: string;
+  correlationId?: string;
+  timestamp: Date;
+  metadata: Record<string, any>;
+}
+
+/**
+ * Transaction notification routing strategy
+ * Routes transaction events to appropriate notification channels
+ */
+@Injectable()
+export class TransactionNotificationStrategy
+  implements
+    IMessageRoutingStrategy<
+      UpdateMessageQueueProps,
+      StandardJobOptions,
+      TransactionNotificationJobData
+    >
+{
+  canHandle(
+    eventData: UpdateMessageQueueProps,
+    meta: EventStoreMetaProps,
+  ): boolean {
+    // Handle all transaction-related events
+    return Boolean(
+      meta.eventType?.includes('transaction.') ||
+        meta.stream?.includes('transaction') ||
+        eventData.payload?.transactionId ||
+        eventData.payload?.from || // transaction has from/to fields
+        (eventData.payload?.amount && eventData.payload?.to),
+    );
+  }
+
+  getQueueName(): string {
+    return QUEUE_NAMES.NOTIFICATION; // Use notification queue for transaction events
+  }
+
+  getJobType(): string {
+    return 'send-transaction-notification';
+  }
+
+  getJobOptions(_eventData: UpdateMessageQueueProps): StandardJobOptions {
+    // Transaction notifications are high priority
+    return {
+      ...JOB_OPTIONS_TEMPLATES.IMMEDIATE,
+      priority: QUEUE_PRIORITIES.HIGH,
+      delay: 0,
+      attempts: 3, // Retry failed notifications
+    };
+  }
+
+  transformData(
+    eventData: UpdateMessageQueueProps,
+    user: IUserToken,
+  ): TransactionNotificationJobData {
+    // Extract action from event type
+    const action = this.extractActionFromEventType(
+      eventData.payload?.eventType as string,
+    );
+
+    return {
+      transactionId: eventData.id,
+      action,
+      transaction: {
+        from: (eventData.payload?.from as string) || 'unknown',
+        to: (eventData.payload?.to as string) || 'unknown',
+        amount: (eventData.payload?.amount as number) || 0,
+        status: (eventData.payload?.status as string) || 'unknown',
+      },
+      tenant: user.tenant || 'unknown',
+      userId: user.sub,
+      correlationId: eventData.correlationId,
+      timestamp: new Date(),
+      metadata: {
+        ...eventData.payload,
+        originalEventType: eventData.payload?.eventType as string,
+        streamName: eventData.payload?.streamName as string,
+      },
+    };
+  }
+
+  private extractActionFromEventType(
+    eventType: string,
+  ): 'created' | 'completed' | 'failed' | 'queued' | 'retrying' {
+    if (eventType?.includes('created')) return 'created';
+    if (eventType?.includes('completed')) return 'completed';
+    if (eventType?.includes('failed')) return 'failed';
+    if (eventType?.includes('queued')) return 'queued';
+    if (eventType?.includes('retrying')) return 'retrying';
+    return 'created'; // default fallback
+  }
+}
+
+/**
  * Data processing routing strategy (default fallback)
  */
 @Injectable()
@@ -356,6 +462,7 @@ export class MessageQueueEventHandler {
     | SlackMessageStrategy
     | EmailMessageStrategy
     | NotificationStrategy
+    | TransactionNotificationStrategy
     | DataProcessingStrategy
   >;
 
@@ -372,6 +479,7 @@ export class MessageQueueEventHandler {
     private readonly slackStrategy: SlackMessageStrategy,
     private readonly emailStrategy: EmailMessageStrategy,
     private readonly notificationStrategy: NotificationStrategy,
+    private readonly transactionNotificationStrategy: TransactionNotificationStrategy,
     private readonly dataProcessingStrategy: DataProcessingStrategy,
   ) {
     this.systemUser = {
@@ -384,8 +492,10 @@ export class MessageQueueEventHandler {
     } as IUserToken;
 
     // Initialize routing strategies in priority order
+    // TransactionNotificationStrategy has high priority for transaction events
     // DataProcessingStrategy is last as it's the fallback
     this.routingStrategies = [
+      this.transactionNotificationStrategy,
       this.slackStrategy,
       this.emailStrategy,
       this.notificationStrategy,
@@ -536,6 +646,12 @@ export class MessageQueueEventHandler {
       'MessageQueueCreatedEvent',
       'MessageQueueScheduledEvent',
       'MessageQueueUpdatedEvent',
+      // Transaction events that should trigger notifications
+      'transaction.created.v1',
+      'transaction.completed.v1',
+      'transaction.failed.v1',
+      'transaction.queued.v1',
+      'transaction.retrying.v1',
     ];
 
     return validEventTypes.some((validType) =>

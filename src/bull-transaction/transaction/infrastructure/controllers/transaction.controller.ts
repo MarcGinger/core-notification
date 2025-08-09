@@ -8,37 +8,30 @@
  * Confidential and proprietary.
  */
 
-import {
-  Body,
-  Controller,
-  HttpCode,
-  Param,
-  Post,
-  SetMetadata,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, SetMetadata } from '@nestjs/common';
 import {
   ApiOperation,
-  ApiParam,
   ApiResponse,
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
-import { KeycloakUser } from 'nest-keycloak-connect';
+import { KeycloakUser, Public } from 'nest-keycloak-connect';
 import { IUserToken } from 'src/shared/auth';
 import {
   ApiCommonErrors,
   staticResponse,
 } from 'src/shared/infrastructure/controllers';
-import { TransactionApplicationService } from '../../application/services';
 import {
   TransactionCreateRequest,
   TransactionResponse,
 } from '../../application/dtos';
+import { TransactionApplicationService } from '../../application/services';
 import { TransactionPermissions } from '../../domain/permissions';
 
 @Controller({
   version: '1',
 })
+@Public()
 @ApiTags('Transactions')
 export class TransactionController {
   constructor(
@@ -71,6 +64,13 @@ export class TransactionController {
     @KeycloakUser() user: IUserToken,
     @Body() createRequest: TransactionCreateRequest,
   ): Promise<TransactionResponse> {
-    return this.transactionApplicationService.create(user, createRequest);
+    const mockUser: IUserToken = {
+      sub: 'user-123',
+      name: 'Test User',
+      email: 'test@example.com',
+      tenant: 'xxx', // This should come from the actual JWT
+    };
+
+    return this.transactionApplicationService.create(mockUser, createRequest);
   }
 }

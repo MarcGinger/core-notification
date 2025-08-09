@@ -120,47 +120,89 @@ export class MessageQueueEventSubscriptionManager
     try {
       this.isRunning = true;
 
-      // Use event type stream for MessageCreatedEvent
-      // This captures all message-queue.created.v1 events across all aggregates
-      const streamPattern = '$et-message-queue.created.v1'; // Event type stream
+      // Subscribe to multiple event types that should trigger message queue routing
+      const eventSubscriptions = [
+        {
+          streamPattern: '$et-message-queue.created.v1',
+          purpose: 'MessageCreatedEvent subscription - all aggregates',
+          description: 'message-queue.created.v1 events',
+        },
+        {
+          streamPattern: '$et-transaction.created.v1',
+          purpose:
+            'TransactionCreatedEvent subscription - route to notifications',
+          description: 'transaction.created.v1 events',
+        },
+        {
+          streamPattern: '$et-transaction.completed.v1',
+          purpose:
+            'TransactionCompletedEvent subscription - route to notifications',
+          description: 'transaction.completed.v1 events',
+        },
+        {
+          streamPattern: '$et-transaction.failed.v1',
+          purpose:
+            'TransactionFailedEvent subscription - route to notifications',
+          description: 'transaction.failed.v1 events',
+        },
+        {
+          streamPattern: '$et-transaction.queued.v1',
+          purpose:
+            'TransactionQueuedEvent subscription - route to notifications',
+          description: 'transaction.queued.v1 events',
+        },
+      ];
 
-      const setupContext =
-        MessageQueueWorkerLoggingHelper.createEnhancedLogContext(
-          'MessageQueueEventSubscriptionManager',
-          'startProjection',
-          undefined,
-          undefined,
-          {
-            streamPattern,
-            purpose: 'MessageCreatedEvent subscription - all aggregates',
+      // Set up subscriptions for each event type
+      for (const subscription of eventSubscriptions) {
+        const setupContext =
+          MessageQueueWorkerLoggingHelper.createEnhancedLogContext(
+            'MessageQueueEventSubscriptionManager',
+            'startProjection',
+            undefined,
+            undefined,
+            {
+              streamPattern: subscription.streamPattern,
+              purpose: subscription.purpose,
+            },
+          );
+
+        this.logger.log(
+          setupContext,
+          `Setting up EventStore subscription for ${subscription.description} (live events only)`,
+        );
+
+        // Set up live subscription only (skip catchup to prevent reprocessing historical events)
+        this.eventOrchestration.subscribeLiveOnly(
+          subscription.streamPattern,
+          (event: IMessageQueue, meta: EventStoreMetaProps) => {
+            void this.handleMessageQueueEvent(event, meta);
           },
         );
 
-      this.logger.log(
-        setupContext,
-        'Setting up EventStore subscription for message-queue.created.v1 events (live events only)',
-      );
+        const successContext =
+          MessageQueueWorkerLoggingHelper.createEnhancedLogContext(
+            'MessageQueueEventSubscriptionManager',
+            'startProjection',
+            undefined,
+            undefined,
+            { streamPattern: subscription.streamPattern },
+          );
 
-      // Set up live subscription only (skip catchup to prevent reprocessing historical events)
-      // We don't want to reprocess all historical Message Queue events on startup
-      this.eventOrchestration.subscribeLiveOnly(
-        streamPattern,
-        (event: IMessageQueue, meta: EventStoreMetaProps) => {
-          void this.handleMessageQueueEvent(event, meta);
-        },
-      );
+        this.logger.log(
+          successContext,
+          `${subscription.description} subscription setup completed successfully`,
+        );
+      }
 
-      const successContext =
+      const finalContext =
         MessageQueueWorkerLoggingHelper.createEnhancedLogContext(
           'MessageQueueEventSubscriptionManager',
           'startProjection',
-          undefined,
-          undefined,
-          { streamPattern },
         );
 
       this.logger.log(
-        successContext,
+        finalContext,
         'Message projection setup completed successfully',
       );
     } catch (error) {

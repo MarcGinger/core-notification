@@ -19,6 +19,7 @@ import {
   MessageQueueEventSubscriptionManager,
   NotificationStrategy,
   SlackMessageStrategy,
+  TransactionNotificationStrategy,
 } from './infrastructure/event-handlers';
 
 /**
@@ -36,6 +37,7 @@ import {
     SlackMessageStrategy,
     EmailMessageStrategy,
     NotificationStrategy,
+    TransactionNotificationStrategy,
     DataProcessingStrategy,
 
     // Main event handler that uses strategies
@@ -51,6 +53,7 @@ import {
     SlackMessageStrategy,
     EmailMessageStrategy,
     NotificationStrategy,
+    TransactionNotificationStrategy,
     DataProcessingStrategy,
   ],
 })
