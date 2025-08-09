@@ -24,6 +24,7 @@ import { OverviewKafkaDocumentation } from './overview-kafka.doc';
 import { SystemOperationsDocumentation } from './system-operations.doc';
 import { CoreSlackWorkerDocumentation } from 'src/core-slack-worker/module.doc';
 import { CoreTemplateManagerDocumentation } from 'src/core-template-manager/module.doc';
+import { BullTransactionDocumentation } from 'src/bull-transaction/module.doc';
 
 /**
  * Setup multiple Swagger documentation using modular documentation classes
@@ -43,6 +44,7 @@ export function setupMultipleSwaggerDocs(
       gettingStarted: '',
       coreSlackWorker: '',
       coreTemplateManager: '',
+      bullTransaction: '',
     };
   }
 
@@ -61,6 +63,7 @@ export function setupMultipleSwaggerDocs(
 
   CoreSlackWorkerDocumentation.setup(app, port);
   CoreTemplateManagerDocumentation.setup(app, port);
+  BullTransactionDocumentation.setup(app, port);
 
   return {
     hub: ApiDocumentationHub.getEndpoint(port),
@@ -73,5 +76,6 @@ export function setupMultipleSwaggerDocs(
 
     coreSlackWorker: CoreSlackWorkerDocumentation.getEndpoint(port),
     coreTemplateManager: CoreTemplateManagerDocumentation.getEndpoint(port),
+    bullTransaction: BullTransactionDocumentation.getEndpoint(port),
   };
 }

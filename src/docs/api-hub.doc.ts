@@ -57,6 +57,14 @@ export class ApiDocumentationHub {
 
   ---
 
+## Bounded Context - Transaction
+
+  | Documentation | Description | Link |
+  |---------------|-------------|------|
+  | **Bull transaction example** | This is the core transaction service | [📖 View Docs](/api/docs/bull-transaction) |
+
+  ---
+
  
   *💬 **Need Help?** Start with the **[Getting Started Guide](/api/docs/getting-started)** or contact the platform engineering team for infrastructure guidance.*
   

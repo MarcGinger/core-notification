@@ -1,0 +1,63 @@
+{
+  "service": {
+    "name": "bull transaction example",
+    "version": "1",
+    "module": "bull-transaction",
+    "boundedContext": "transaction",
+    "hasRedis": false,
+    "hasSql": false,
+    "hasEventStream": true
+  },
+  "tables": {
+    "transaction": {
+      "docs": {
+        "summary": "This is the transaction module"
+      },
+      "permissions": {
+        "enabled": true,
+        "prefix": ""
+      },
+      "apis": {},
+      "store": {
+        "read": "eventstream",
+        "write": "eventstream",
+        "list": "eventstream"
+      },
+      "cancel": {
+        "create": false,
+        "update": true,
+        "delete": true,
+        "batch": true,
+        "get": true
+      },
+      "complete": [],
+      "redis": {
+        "category": "lookups:core.message.v1",
+        "ttl": 3600,
+        "hash": true,
+        "prefix": "core-transaction",
+        "aggregate": "transaction",
+        "version": "v1"
+      },
+      "eventstream": {
+        "stream": "core.transaction.v1",
+        "create-type": "transaction.create.v1",
+        "update-type": "transaction.update.v1",
+        "boundedContext": "core-transaction",
+        "aggregate": "transaction",
+        "version": "v1"
+      },
+      "cols": {
+        "id": {},
+        "scheduled_at": {},
+        "from": {},
+        "to": {},
+        "amount": {}
+      }
+    }
+  },
+  "excluded": [],
+  "docs": {
+    "summary": "This is the core transaction service"
+  }
+}

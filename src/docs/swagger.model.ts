@@ -34,4 +34,5 @@ export interface SwaggerDocumentationUrls {
   gettingStarted: string;
   coreSlackWorker: string;
   coreTemplateManager: string;
+  bullTransaction: string;
 }

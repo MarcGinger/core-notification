@@ -35,7 +35,7 @@ const create = async (schema, errors) => {
         description: `The requested operation is not yet implemented for ${className} entities`,
         code: `NOT_IMPLEMENTED_${className.toUpperCase()}`,
         exception: `NotImplementedException`,
-        statusCode: `501`,
+        statusCode: 501,
         domain: `true`,
       };
       errors[table.name].notFound = {
@@ -43,7 +43,7 @@ const create = async (schema, errors) => {
         description: `The requested ${className} entity could not be found in the system`,
         code: `${className.toUpperCase()}_NOT_FOUND`,
         exception: `NotFoundException`,
-        statusCode: `404`,
+        statusCode: 404,
         domain: `true`,
       };
       errors[table.name].createError = {
@@ -51,7 +51,7 @@ const create = async (schema, errors) => {
         description: `The provided ${className} details are invalid or incomplete for creation`,
         code: `INVALID_${className.toUpperCase()}_CREATE_DETAILS`,
         exception: `BadRequestException`,
-        statusCode: `400`,
+        statusCode: 400,
         domain: `true`,
       };
       errors[table.name].updateError = {
@@ -59,7 +59,7 @@ const create = async (schema, errors) => {
         description: `The provided ${className} details are invalid or incomplete for update`,
         code: `INVALID_${className.toUpperCase()}_UPDATE_DETAILS`,
         exception: `BadRequestException`,
-        statusCode: `400`,
+        statusCode: 400,
         domain: `true`,
       };
       errors[table.name].deleteError = {
@@ -67,7 +67,7 @@ const create = async (schema, errors) => {
         description: `The provided ${className} details are invalid or the entity cannot be deleted due to business rules`,
         code: `INVALID_${className.toUpperCase()}_DELETE_DETAILS`,
         exception: `BadRequestException`,
-        statusCode: `400`,
+        statusCode: 400,
         domain: `true`,
       };
 
@@ -90,11 +90,11 @@ const create = async (schema, errors) => {
         lines.push(`  ${key}: {`);
         if (typeof value === `object` && value !== null) {
           Object.entries(value).forEach(([subKey, subVal]) => {
-            // if (subKey === `code`) {
-            //   lines.push(`    ${subKey}: \`${subVal.toUpperCase()}\`,`);
-            // } else {
-            lines.push(`    ${subKey}: \`${subVal}\`,`);
-            // }
+            if (subKey === `statusCode`) {
+              lines.push(`    ${subKey}: ${subVal},`);
+            } else {
+              lines.push(`    ${subKey}: \`${subVal}\`,`);
+            }
           });
         } else {
           lines.push(

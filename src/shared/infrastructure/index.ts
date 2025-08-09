@@ -19,3 +19,4 @@ export * from './interceptors';
 export * from './keycloak';
 export * from './redis';
 export * from './repositories';
+export * from './validation';
