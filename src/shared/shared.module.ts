@@ -12,6 +12,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
 import { LoggerModule } from 'src/shared/logger';
+import { TemplateRetrievalModule } from './application/services/template-retrieval/template-retrieval.module';
 import { AzureBlobStorageModule } from './infrastructure/azure-storage';
 
 @Module({
@@ -20,6 +21,7 @@ import { AzureBlobStorageModule } from './infrastructure/azure-storage';
     ConfigModule.forRoot(),
     LoggerModule,
     AzureBlobStorageModule,
+    TemplateRetrievalModule,
   ],
   providers: [ConfigService],
   exports: [
@@ -28,6 +30,7 @@ import { AzureBlobStorageModule } from './infrastructure/azure-storage';
     ConfigService,
     LoggerModule,
     AzureBlobStorageModule,
+    TemplateRetrievalModule,
   ],
 })
 export class SharedModule {}

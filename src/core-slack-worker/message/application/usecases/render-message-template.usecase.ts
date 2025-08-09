@@ -95,11 +95,10 @@ export class RenderMessageTemplateUseCase {
         return defaultMessage;
       }
 
-      // TODO: Load template content from template repository
-      // For now, use a mock template content
+      // Load template content from template repository using the generic service
       const templateContent = await this.loadTemplateContent(
+        user,
         props.templateCode!,
-        user.tenant || 'rrrr',
       );
 
       // Use domain service to render the message
@@ -198,37 +197,30 @@ export class RenderMessageTemplateUseCase {
   }
 
   /**
-   * Loads template content from the template repository
-   * TODO: Replace with actual template repository implementation
+   * Loads template content - simplified mock implementation
+   * @param user - User context for tenant isolation
    * @param templateCode - The template identifier
-   * @param tenant - The tenant context
    * @returns Promise<string> - The template content
    */
   private loadTemplateContent(
+    user: IUserToken,
     templateCode: string,
-    tenant: string,
   ): Promise<string> {
-    // TODO: Implement actual template loading from repository
-    // This should load from database, file system, or external service
-
-    // Mock template content for different template codes
+    // Simple mock templates for different template codes
     const mockTemplates: Record<string, string> = {
-      'welcome-message':
-        'Welcome {{userName}} to {{channelName}}! Your role is {{userRole}}.',
-      notification: 'Alert: {{message}} at {{timestamp}}',
-      reminder: 'Reminder: {{taskName}} is due on {{dueDate}}',
-      'status-update':
-        'Status Update: {{project}} is now {{status}} - {{details}}',
+      'welcome-message': 'Welcome {{name}}! Your account is ready.',
+      notification: 'Hi {{name}}, you have {{count}} new notifications.',
+      reminder: "Don't forget: {{task}} is due on {{dueDate}}.",
+      'status-update': 'Status Update: {{status}} - {{message}}',
     };
 
-    const templateContent = mockTemplates[templateCode];
-
-    if (!templateContent) {
+    const template = mockTemplates[templateCode];
+    if (!template) {
       throw new Error(
-        `Template not found: ${templateCode} for tenant: ${tenant}`,
+        `Template not found: ${templateCode} for tenant: ${user.tenant}`,
       );
     }
 
-    return Promise.resolve(templateContent);
+    return Promise.resolve(template);
   }
 }

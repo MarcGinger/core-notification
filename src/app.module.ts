@@ -17,11 +17,10 @@ import {
   ResourceGuard,
   RoleGuard,
 } from 'nest-keycloak-connect';
-import { LoggerModule } from './shared/logger';
-import { KeycloakConfigService } from './shared/infrastructure';
-import { HealthModule } from './health/health.module';
 import { CoreSlackWorkerModule } from './core-slack-worker/module';
-import { CoreTemplateManagerModule } from './core-template-manager/module';
+import { HealthModule } from './health/health.module';
+import { KeycloakConfigService } from './shared/infrastructure';
+import { LoggerModule } from './shared/logger';
 
 @Module({
   imports: [
@@ -33,7 +32,7 @@ import { CoreTemplateManagerModule } from './core-template-manager/module';
     HealthModule,
 
     CoreSlackWorkerModule,
-    CoreTemplateManagerModule,
+    // CoreTemplateManagerModule,
   ],
   providers: [
     {
