@@ -1,0 +1,183 @@
+{
+  "service": {
+    "name": "bull transaction example",
+    "version": "1",
+    "module": "bull-transaction",
+    "boundedContext": "slack",
+    "hasRedis": false,
+    "hasSql": true,
+    "hasEventStream": true
+  },
+  "tables": {
+    "transaction": {
+      "docs": {
+        "summary": "This is the transaction module"
+      },
+      "permissions": {
+        "enabled": true,
+        "prefix": ""
+      },
+      "apis": {},
+      "store": {
+        "read": "eventstream",
+        "write": "eventstream",
+        "list": "eventstream"
+      },
+      "cancel": {
+        "create": false,
+        "update": true,
+        "delete": true,
+        "batch": true,
+        "get": true
+      },
+      "complete": [],
+      "redis": {
+        "category": "lookups:core.message.v1",
+        "ttl": 3600,
+        "hash": true,
+        "prefix": "core-slack",
+        "aggregate": "message",
+        "version": "v1"
+      },
+      "eventstream": {
+        "stream": "core.transaction.v1",
+        "create-type": "transaction.create.v1",
+        "update-type": "transaction.update.v1",
+        "boundedContext": "core-transaction",
+        "aggregate": "transaction",
+        "version": "v1"
+      },
+      "cols": {
+        "id": {},
+        "config_code": {},
+        "channel": {},
+        "template_code": {},
+        "payload": {},
+        "rendered_message": {},
+        "status": {},
+        "scheduled_at": {},
+        "sent_at": {},
+        "failure_reason": {},
+        "correlation_id": {},
+        "retry_count": {},
+        "created_at": {},
+        "updated_at": {}
+      }
+    },
+    "send_slack_message": {
+      "docs": {
+        "summary": "This is the Request module"
+      },
+      "permissions": {
+        "enabled": true,
+        "prefix": ""
+      },
+      "apis": {
+        "stats": {
+          "method": "GET",
+          "summary": "Get Slack message queue statistics",
+          "description": "Retrieves statistics about the Slack message queue, including the number of messages in the queue, processed messages, and any errors encountered.",
+          "params": {},
+          "responses": {
+            "200": {
+              "description": "Successful response containing queue statistics"
+            }
+          }
+        },
+        "failed-jobs": {
+          "method": "GET",
+          "summary": "Get Slack message queue failed jobs",
+          "description": "Retrieves statistics about the failed jobs in the Slack message queue, including the number of failed jobs and any errors encountered.",
+          "params": {},
+          "responses": {
+            "200": {
+              "description": "Successful response containing failed jobs statistics"
+            }
+          }
+        },
+        "clean": {
+          "method": "POST",
+          "summary": "Clean old completed and failed jobs",
+          "description": "Removes old completed and failed jobs to free up memory",
+          "params": {},
+          "responses": {
+            "200": {
+              "description": "Successful response indicating old jobs have been cleaned"
+            }
+          }
+        },
+        "pause": {
+          "method": "POST",
+          "summary": "Pause the Slack message queue",
+          "description": "Temporarily pauses the processing of messages in the Slack message queue",
+          "params": {},
+          "responses": {
+            "200": {
+              "description": "Successful response indicating the Slack message queue has been paused"
+            }
+          }
+        },
+        "resume": {
+          "method": "POST",
+          "summary": "Resume the Slack message queue",
+          "description": "Resumes the processing of messages in the Slack message queue",
+          "params": {},
+          "responses": {
+            "200": {
+              "description": "Successful response indicating the Slack message queue has been resumed"
+            }
+          }
+        }
+      },
+      "store": {
+        "read": "sql",
+        "write": "sql",
+        "list": "sql"
+      },
+      "cancel": {
+        "create": false,
+        "update": true,
+        "delete": true,
+        "batch": true,
+        "get": true
+      },
+      "complete": [],
+      "redis": {
+        "category": "lookups:core.request.v1",
+        "ttl": 3600,
+        "hash": true,
+        "prefix": "core-slack-worker",
+        "aggregate": "request",
+        "version": "v1"
+      },
+      "eventstream": {
+        "stream": "core.request.v1",
+        "create-type": "create.v1",
+        "update-type": "update.v1",
+        "boundedContext": "core-slack-worker",
+        "aggregate": "send-slack-message",
+        "version": "v1"
+      },
+      "cols": {
+        "code": {},
+        "channel": {
+          "pattern": "^[#@].+",
+          "patternMessage": "Channel must start with # for channels or @ for direct messages (use user ID like @U1234567890)"
+        },
+        "config_code": {},
+        "templateCode": {},
+        "payload": {},
+        "scheduled_at": {},
+        "priority": {
+          "min": 1,
+          "minMessage": "Priority must be at least 1"
+        },
+        "correlationId": {}
+      }
+    }
+  },
+  "excluded": [],
+  "docs": {
+    "summary": "This is the core slack messaging service"
+  }
+}
