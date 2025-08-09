@@ -145,10 +145,43 @@ export class MessageTemplateDomainService {
    */
   validateRenderedMessage(renderedMessage: string): boolean {
     // Business rules for rendered message validation
-    return (
-      renderedMessage.length > 0 &&
-      renderedMessage.length <= 4000 && // Slack message limit
-      !renderedMessage.includes('[MISSING_VALUE]') // No unreplaced placeholders
-    );
+
+    // Rule 1: Message must not be empty
+    if (!renderedMessage || renderedMessage.trim().length === 0) {
+      return false;
+    }
+
+    // Rule 2: Message must not exceed Slack's message limit
+    if (renderedMessage.length > 4000) {
+      return false;
+    }
+
+    // Rule 3: Check for unreplaced placeholders (but allow some flexibility)
+    const missingValueCount = (
+      renderedMessage.match(/\[MISSING_VALUE\]/g) || []
+    ).length;
+    const totalPlaceholderCount = (
+      renderedMessage.match(/\{\{[^}]+\}\}/g) || []
+    ).length;
+
+    // Rule 4: If more than 50% of placeholders are missing, consider invalid
+    if (missingValueCount > 0 && totalPlaceholderCount === 0) {
+      // Only missing values, no valid placeholders - likely bad template
+      return missingValueCount <= 2; // Allow up to 2 missing values
+    }
+
+    // Rule 5: Message should not be just whitespace or special characters
+    const meaningfulContent = renderedMessage.replace(/[\s[\]{}]/g, '');
+    if (meaningfulContent.length < 3) {
+      return false;
+    }
+
+    // Rule 6: Basic content validation - should contain some alphanumeric characters
+    const hasAlphanumeric = /[a-zA-Z0-9]/.test(renderedMessage);
+    if (!hasAlphanumeric) {
+      return false;
+    }
+
+    return true;
   }
 }

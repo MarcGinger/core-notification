@@ -51,8 +51,13 @@ export class CoreTemplateRetrievalService implements ITemplateRetrievalService {
       options,
     );
 
-    this.logger.debug(
+    this.logger.log(
       `Retrieving template: ${templateCode} for tenant: ${user.tenant}`,
+    );
+
+    // Add console.log for immediate visibility during development
+    console.log(
+      `🔍 [TEMPLATE SERVICE] Retrieving template: ${templateCode} for tenant: ${user.tenant}`,
     );
 
     try {
@@ -60,11 +65,16 @@ export class CoreTemplateRetrievalService implements ITemplateRetrievalService {
       const mockTemplate = this.getMockTemplate(templateCode);
 
       if (!mockTemplate) {
+        console.log(
+          `❌ [TEMPLATE SERVICE] Template not found: ${templateCode}`,
+        );
         this.logger.debug(
           `Template not found: ${templateCode} for tenant: ${user.tenant}`,
         );
         return undefined;
       }
+
+      console.log(`✅ [TEMPLATE SERVICE] Found template: ${templateCode}`);
 
       // Apply filtering based on options
       if (options) {
@@ -72,6 +82,9 @@ export class CoreTemplateRetrievalService implements ITemplateRetrievalService {
           options.includeInactive === false &&
           mockTemplate.active === false
         ) {
+          console.log(
+            `⚠️ [TEMPLATE SERVICE] Template ${templateCode} is inactive`,
+          );
           this.logger.debug(
             `Template ${templateCode} is inactive and includeInactive=false`,
           );
@@ -79,6 +92,9 @@ export class CoreTemplateRetrievalService implements ITemplateRetrievalService {
         }
 
         if (options.version && mockTemplate.version !== options.version) {
+          console.log(
+            `⚠️ [TEMPLATE SERVICE] Template ${templateCode} version mismatch`,
+          );
           this.logger.debug(
             `Template ${templateCode} version mismatch: expected ${options.version}, found ${mockTemplate.version}`,
           );
@@ -86,6 +102,9 @@ export class CoreTemplateRetrievalService implements ITemplateRetrievalService {
         }
 
         if (options.useCase && mockTemplate.useCase !== options.useCase) {
+          console.log(
+            `⚠️ [TEMPLATE SERVICE] Template ${templateCode} useCase mismatch`,
+          );
           this.logger.debug(
             `Template ${templateCode} useCase mismatch: expected ${options.useCase}, found ${mockTemplate.useCase}`,
           );
@@ -93,6 +112,9 @@ export class CoreTemplateRetrievalService implements ITemplateRetrievalService {
         }
 
         if (options.transport && mockTemplate.transport !== options.transport) {
+          console.log(
+            `⚠️ [TEMPLATE SERVICE] Template ${templateCode} transport mismatch`,
+          );
           this.logger.debug(
             `Template ${templateCode} transport mismatch: expected ${options.transport}, found ${mockTemplate.transport}`,
           );
@@ -100,6 +122,9 @@ export class CoreTemplateRetrievalService implements ITemplateRetrievalService {
         }
       }
 
+      console.log(
+        `🎉 [TEMPLATE SERVICE] Successfully retrieved template: ${templateCode}`,
+      );
       this.logger.debug(
         `Successfully retrieved template: ${templateCode} for tenant: ${user.tenant}`,
       );
@@ -180,8 +205,24 @@ export class CoreTemplateRetrievalService implements ITemplateRetrievalService {
     templateCode: string,
     options?: ITemplateRetrievalOptions,
   ): Promise<string | undefined> {
+    console.log(
+      `📝 [TEMPLATE SERVICE] Getting template content: ${templateCode} for tenant: ${user.tenant}`,
+    );
+
     const template = await this.getTemplate(user, templateCode, options);
-    return template?.content;
+    const content = template?.content;
+
+    if (content) {
+      console.log(
+        `📄 [TEMPLATE SERVICE] Retrieved template content: ${templateCode}, length: ${content.length}`,
+      );
+    } else {
+      console.log(
+        `❌ [TEMPLATE SERVICE] No content found for template: ${templateCode}`,
+      );
+    }
+
+    return content;
   }
 
   /**

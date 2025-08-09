@@ -71,16 +71,6 @@ export class RenderMessageTemplateUseCase {
     );
 
     try {
-      const template = await this.templateRetrievalService.getTemplate(
-        user,
-        props.templateCode!,
-      );
-
-      this.logger.log(
-        template,
-        `Successfully retrieved template: templateCode '${props.templateCode}'`,
-      );
-
       // Check if template rendering is needed using domain service
       if (!this.messageTemplateDomainService.shouldRenderTemplate(props)) {
         const defaultMessage =
@@ -107,12 +97,26 @@ export class RenderMessageTemplateUseCase {
           successContext,
           `No template rendering needed - using default message: length ${defaultMessage.length}`,
         );
+
+        return defaultMessage;
       }
 
-      // Load template content from template repository using the generic service
-      const templateContent = await this.loadTemplateContent(
-        user,
-        props.templateCode!,
+      // Load template content using the injected template retrieval service
+      const templateContent =
+        await this.templateRetrievalService.getTemplateContent(
+          user,
+          props.templateCode!,
+          { includeInactive: false }, // Only active templates for rendering
+        );
+
+      if (!templateContent) {
+        throw new Error(
+          `Template not found: ${props.templateCode} for tenant: ${user.tenant}`,
+        );
+      }
+
+      this.logger.log(
+        `Successfully retrieved template: templateCode '${props.templateCode}', content length: ${templateContent.length}`,
       );
 
       // Use domain service to render the message
@@ -142,13 +146,16 @@ export class RenderMessageTemplateUseCase {
               renderingType: 'validation_failed',
               templateCode: props.templateCode,
               renderedLength: renderedMessage.length,
+              renderedPreview: renderedMessage.substring(0, 100), // First 100 chars for debugging
               reason: 'rendered_message_validation_failed',
+              hasMissingValues: renderedMessage.includes('[MISSING_VALUE]'),
+              hasUnreplacedPlaceholders: /\{\{[^}]+\}\}/.test(renderedMessage),
             },
           );
 
         this.logger.warn(
           warningContext,
-          `Rendered message failed validation - using default message: templateCode '${props.templateCode}'`,
+          `Rendered message failed validation - using default message: templateCode '${props.templateCode}', preview: '${renderedMessage.substring(0, 50)}...'`,
         );
 
         return this.messageTemplateDomainService.generateDefaultMessage(props);
@@ -208,33 +215,5 @@ export class RenderMessageTemplateUseCase {
       // Fall back to default message on any error
       return this.messageTemplateDomainService.generateDefaultMessage(props);
     }
-  }
-
-  /**
-   * Loads template content - simplified mock implementation
-   * @param user - User context for tenant isolation
-   * @param templateCode - The template identifier
-   * @returns Promise<string> - The template content
-   */
-  private loadTemplateContent(
-    user: IUserToken,
-    templateCode: string,
-  ): Promise<string> {
-    // Simple mock templates for different template codes
-    const mockTemplates: Record<string, string> = {
-      'welcome-message': 'Welcome {{name}}! Your account is ready.',
-      notification: 'Hi {{name}}, you have {{count}} new notifications.',
-      reminder: "Don't forget: {{task}} is due on {{dueDate}}.",
-      'status-update': 'Status Update: {{status}} - {{message}}',
-    };
-
-    const template = mockTemplates[templateCode];
-    if (!template) {
-      throw new Error(
-        `Template not found: ${templateCode} for tenant: ${user.tenant}`,
-      );
-    }
-
-    return Promise.resolve(template);
   }
 }
