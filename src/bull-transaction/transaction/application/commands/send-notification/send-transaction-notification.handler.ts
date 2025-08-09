@@ -8,7 +8,7 @@
  * Confidential and proprietary.
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
 import { ILogger } from 'src/shared/logger';
@@ -23,7 +23,7 @@ export class SendTransactionNotificationHandler
 {
   constructor(
     private readonly messageQueueHandler: MessageQueueEventHandler,
-    private readonly logger: ILogger,
+    @Inject('ILogger') private readonly logger: ILogger,
   ) {}
 
   async execute(command: SendTransactionNotificationCommand): Promise<void> {
