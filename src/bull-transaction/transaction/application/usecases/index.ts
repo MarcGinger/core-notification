@@ -18,12 +18,18 @@ export { CreateTransactionUseCase, SendTransactionNotificationUseCase }; 2025 Ma
  */
 
 import { CreateTransactionUseCase } from './create-transaction.usecase';
+import { QueueTransactionUseCase } from './queue-transaction.usecase';
 import { SendTransactionNotificationUseCase } from './send-transaction-notification.usecase';
 
 // application/commands/index.ts
 export const TransactionUseCases = [
   CreateTransactionUseCase,
   SendTransactionNotificationUseCase,
+  QueueTransactionUseCase,
 ];
 
-export { CreateTransactionUseCase, SendTransactionNotificationUseCase };
+export {
+  CreateTransactionUseCase,
+  QueueTransactionUseCase,
+  SendTransactionNotificationUseCase,
+};

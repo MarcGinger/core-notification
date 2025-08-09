@@ -8,6 +8,8 @@
  * Confidential and proprietary.
  */
 
+import { Type } from '@nestjs/common';
+
 export interface EventSubscriptionConfig {
   streamPattern: string;
   purpose: string;
@@ -16,6 +18,7 @@ export interface EventSubscriptionConfig {
 
 export interface MessageQueueEventSubscriptionConfig {
   eventSubscriptions: EventSubscriptionConfig[];
+  customStrategies?: Type<any>[];
 }
 
 export const MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG =

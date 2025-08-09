@@ -19,6 +19,7 @@ import { TransactionExceptionMessage } from './domain/exceptions';
 import { TransactionDomainService } from './domain/services';
 import { createTransactionEventSubscriptionConfig } from './infrastructure/config/transaction-event-subscription.config';
 import { TransactionController } from './infrastructure/controllers';
+import { TransactionMessageRoutingStrategy } from './infrastructure/message-routing';
 import {
   TransactionMemoryProjection,
   TransactionProjectionManager,
@@ -52,6 +53,9 @@ import { TransactionRepository } from './infrastructure/repositories';
       provide: 'TransactionMemoryProjection',
       useExisting: TransactionMemoryProjection,
     },
+
+    // Transaction-specific message routing strategy
+    TransactionMessageRoutingStrategy,
   ],
   exports: [
     TransactionRepository,

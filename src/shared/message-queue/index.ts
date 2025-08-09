@@ -24,6 +24,9 @@ export {
   IMessageRoutingStrategy,
   NotificationStrategy,
   SlackMessageStrategy,
+  StandardJobOptions,
+  TransactionNotificationJobData,
+  TransactionNotificationStrategy,
 } from './infrastructure/event-handlers/message-queue-event.handler';
 
 // Domain exports

@@ -8,7 +8,13 @@
  * Confidential and proprietary.
  */
 
-export * from './scheduled-at';
-export * from './transaction-identifier';
-export * from './transaction-projection-keys';
-export * from './transaction.domain';
+import { ICommand } from '@nestjs/cqrs';
+import { IUserToken } from 'src/shared/auth';
+import { UpdateTransactionProps } from '../../../domain/properties';
+
+export class QueueTransactionCommand implements ICommand {
+  constructor(
+    public user: IUserToken,
+    public readonly props: UpdateTransactionProps,
+  ) {}
+}

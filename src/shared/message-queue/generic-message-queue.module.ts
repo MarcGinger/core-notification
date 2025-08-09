@@ -86,7 +86,16 @@ export class GenericMessageQueueModule {
           inject: options.inject || [],
         },
 
-        // Routing strategies
+        // Dynamic custom strategies provider
+        {
+          provide: 'CUSTOM_STRATEGIES',
+          useFactory: (config: MessageQueueEventSubscriptionConfig) => {
+            return config.customStrategies || [];
+          },
+          inject: [MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG],
+        },
+
+        // Base routing strategies
         SlackMessageStrategy,
         EmailMessageStrategy,
         NotificationStrategy,

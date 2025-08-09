@@ -26,7 +26,7 @@ import {
   TransactionExceptionMessage,
 } from '../exceptions';
 import { TransactionProps } from '../properties';
-import { TransactionIdentifier } from '../value-objects';
+import { ScheduledAt, TransactionIdentifier } from '../value-objects';
 
 export class Transaction
   extends AggregateRoot
@@ -37,7 +37,7 @@ export class Transaction
   private _to: string;
   private _amount: number;
   private _status: TransactionStatusEnum;
-  private _scheduledAt?: Date;
+  private _scheduledAt?: ScheduledAt;
   private _processedAt?: Date;
   private _failureReason?: string;
   private _correlationId?: string;
@@ -84,7 +84,7 @@ export class Transaction
     return this._status;
   }
 
-  public get scheduledAt(): Date | undefined {
+  public get scheduledAt(): ScheduledAt | undefined {
     return this._scheduledAt;
   }
 
@@ -121,7 +121,7 @@ export class Transaction
       to: entity.to,
       amount: entity.amount,
       status: entity.status,
-      scheduledAt: entity.scheduledAt,
+      scheduledAt: ScheduledAt.create(entity.scheduledAt),
       processedAt: entity.processedAt,
       failureReason: entity.failureReason,
       correlationId: entity.correlationId,
@@ -139,7 +139,7 @@ export class Transaction
       to: this._to,
       amount: this._amount,
       status: this._status,
-      scheduledAt: this._scheduledAt,
+      scheduledAt: this._scheduledAt?.getValue(),
       processedAt: this._processedAt,
       failureReason: this._failureReason,
       correlationId: this._correlationId,
@@ -185,7 +185,7 @@ export class Transaction
     const scheduledProps = {
       ...props,
       status: TransactionStatusEnum.SCHEDULED,
-      scheduledAt: scheduledAt,
+      scheduledAt: ScheduledAt.create(scheduledAt),
     };
 
     const transaction = new Transaction(scheduledProps);
@@ -293,7 +293,7 @@ export class Transaction
     this._retryCount = this._retryCount + 1;
 
     if (nextRetryAt) {
-      this._scheduledAt = nextRetryAt;
+      this._scheduledAt = ScheduledAt.create(nextRetryAt);
     }
 
     this.updateStatus(user, TransactionStatusEnum.RETRYING);
@@ -319,7 +319,7 @@ export class Transaction
    */
   reschedule(user: IUserToken, newScheduledAt: Date): void {
     const previousStatus = this._status;
-    this._scheduledAt = newScheduledAt;
+    this._scheduledAt = ScheduledAt.create(newScheduledAt);
     this.updateStatus(user, TransactionStatusEnum.SCHEDULED);
 
     // Emit specific scheduled event

@@ -9,9 +9,9 @@
  */
 
 export interface UpdateTransactionProps {
-  readonly id?: string;
-  readonly from?: string;
-  readonly to?: string;
-  readonly amount?: number;
+  readonly id: string;
+  readonly from: string;
+  readonly to: string;
+  readonly amount: number;
   readonly scheduledAt?: Date;
 }

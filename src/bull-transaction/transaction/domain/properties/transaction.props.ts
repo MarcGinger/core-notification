@@ -9,7 +9,7 @@
  */
 
 import { TransactionStatusEnum } from '../entities';
-import { TransactionIdentifier } from '../value-objects';
+import { ScheduledAt, TransactionIdentifier } from '../value-objects';
 
 // generate-domain-properties
 export interface TransactionProps {
@@ -18,7 +18,7 @@ export interface TransactionProps {
   readonly to: string;
   readonly amount: number;
   readonly status: TransactionStatusEnum;
-  readonly scheduledAt?: Date;
+  readonly scheduledAt?: ScheduledAt;
   readonly processedAt?: Date;
   readonly failureReason?: string;
   readonly correlationId?: string;

@@ -9,6 +9,7 @@
  */
 
 import { MessageQueueEventSubscriptionConfig } from 'src/shared/message-queue';
+import { TransactionMessageRoutingStrategy } from '../message-routing';
 
 /**
  * Configuration factory for transaction event subscriptions
@@ -47,5 +48,6 @@ export const createTransactionEventSubscriptionConfig =
           description: 'transaction.queued.v1 events',
         },
       ],
+      customStrategies: [TransactionMessageRoutingStrategy],
     };
   };

@@ -8,7 +8,4 @@
  * Confidential and proprietary.
  */
 
-export * from './scheduled-at';
-export * from './transaction-identifier';
-export * from './transaction-projection-keys';
-export * from './transaction.domain';
+export * from './transaction-message-routing.strategy';

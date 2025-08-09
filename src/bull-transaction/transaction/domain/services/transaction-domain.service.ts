@@ -14,7 +14,7 @@ import { IUserToken } from 'src/shared/auth';
 import { Transaction } from '../aggregates';
 import { TransactionStatusEnum } from '../entities';
 import { CreateTransactionProps } from '../properties';
-import { TransactionIdentifier } from '../value-objects';
+import { ScheduledAt, TransactionIdentifier } from '../value-objects';
 
 /**
  * Domain service for handling complex business operations that span multiple aggregates
@@ -63,7 +63,7 @@ export class TransactionDomainService {
       to: createData.to,
       amount: createData.amount,
       status: TransactionStatusEnum.CREATED,
-      scheduledAt: createData.scheduledAt,
+      scheduledAt: ScheduledAt.create(createData.scheduledAt),
       retryCount: 0,
     });
 
