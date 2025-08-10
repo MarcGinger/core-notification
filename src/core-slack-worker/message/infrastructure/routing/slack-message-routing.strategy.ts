@@ -16,12 +16,14 @@ import {
 } from 'src/shared/infrastructure/bullmq';
 import { EventStoreMetaProps } from 'src/shared/infrastructure/event-store';
 import {
-  IMessageRoutingStrategy,
   QUEUE_NAMES,
   SlackJobData,
-  StandardJobOptions,
   UpdateMessageQueueProps,
 } from 'src/shared/message-queue';
+import {
+  IMessageRoutingStrategy,
+  StandardJobOptions,
+} from './message-queue-event.model';
 
 /**
  * Slack message routing strategy

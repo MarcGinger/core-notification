@@ -27,7 +27,6 @@ import {
   TransactionEventHandler,
   TransactionEventSubscriptionManager,
 } from './infrastructure/event-handlers';
-import { TransactionMessageRoutingStrategy } from './infrastructure/message-routing';
 import {
   TransactionEventProcessor,
   TransactionProcessor,
@@ -75,9 +74,6 @@ import { TransactionJobDispatcher } from './infrastructure/services';
       provide: 'TransactionMemoryProjection',
       useExisting: TransactionMemoryProjection,
     },
-
-    // Transaction-specific message routing strategy
-    TransactionMessageRoutingStrategy,
 
     // Event processor for handling domain events
     TransactionEventProcessor,

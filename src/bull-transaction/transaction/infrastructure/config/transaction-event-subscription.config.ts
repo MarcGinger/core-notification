@@ -10,10 +10,13 @@
 
 import { MessageQueueEventSubscriptionConfig } from 'src/shared/message-queue';
 import { QueueRoute } from '../../../../shared/message-queue/types';
-import { TransactionMessageRoutingStrategy } from '../message-routing';
 
 /**
  * Configuration factory for transaction event subscriptions
+ *
+ * @deprecated This configuration is part of the legacy central routing infrastructure.
+ * Transaction domain now uses TransactionEventHandler for direct event processing.
+ * This configuration will be removed in a future version.
  */
 export const createTransactionEventSubscriptionConfig =
   (): MessageQueueEventSubscriptionConfig => {
@@ -71,7 +74,7 @@ export const createTransactionEventSubscriptionConfig =
           description: 'transaction.queued.v1 events',
         },
       ],
-      customStrategies: [TransactionMessageRoutingStrategy],
+      customStrategies: [], // Deprecated: Use TransactionEventHandler instead
 
       // Domain configuration
       domain: 'transaction',

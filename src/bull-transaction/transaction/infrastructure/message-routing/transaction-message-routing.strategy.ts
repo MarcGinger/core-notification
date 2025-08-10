@@ -9,6 +9,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
+import { JobsOptions } from 'bullmq';
 import { IUserToken } from 'src/shared/auth';
 import {
   JOB_OPTIONS_TEMPLATES,
@@ -18,8 +19,6 @@ import {
 import { EventStoreMetaProps } from 'src/shared/infrastructure/event-store';
 import { ILogger } from 'src/shared/logger';
 import {
-  IMessageRoutingStrategy,
-  StandardJobOptions,
   TransactionNotificationJobData,
   UpdateMessageQueueProps,
 } from 'src/shared/message-queue';
@@ -28,16 +27,12 @@ import { TransactionEventData, TransactionEventProcessor } from '../processors';
 /**
  * Transaction-specific message routing strategy
  * Handles routing and transformation of transaction events to notification queues
+ *
+ * @deprecated This class is part of the legacy central routing infrastructure.
+ * Use TransactionEventHandler for domain-driven event processing instead.
  */
 @Injectable()
-export class TransactionMessageRoutingStrategy
-  implements
-    IMessageRoutingStrategy<
-      UpdateMessageQueueProps,
-      StandardJobOptions,
-      TransactionNotificationJobData
-    >
-{
+export class TransactionMessageRoutingStrategy {
   constructor(
     @Inject('ILogger') private readonly logger: ILogger,
     private readonly transactionEventProcessor: TransactionEventProcessor,
@@ -128,7 +123,7 @@ export class TransactionMessageRoutingStrategy
     return 'send-transaction-notification';
   }
 
-  getJobOptions(_eventData: UpdateMessageQueueProps): StandardJobOptions {
+  getJobOptions(): JobsOptions {
     // Transaction notifications are high priority
     return {
       ...JOB_OPTIONS_TEMPLATES.IMMEDIATE,

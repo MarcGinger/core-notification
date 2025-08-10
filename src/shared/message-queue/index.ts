@@ -14,13 +14,6 @@ export { GenericMessageQueueModule } from './generic-message-queue.module';
 // Configuration exports
 export * from './domain/interfaces';
 
-// DEPRECATED: Strategy exports - Domains should handle their own routing
-// @deprecated Use domain-specific routing logic instead
-export {
-  IMessageRoutingStrategy,
-  StandardJobOptions,
-} from './infrastructure/event-handlers/message-queue-event.model';
-
 // Job data type exports
 export * from './infrastructure/job-data';
 
