@@ -9,5 +9,3 @@
  */
 
 export * from './adapter.interface';
-export * from './message-queue-api.adapter';
-export * from './transaction-message.adapter';

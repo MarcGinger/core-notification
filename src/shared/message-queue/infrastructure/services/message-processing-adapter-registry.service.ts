@@ -15,7 +15,7 @@ import {
   MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG,
   MessageQueueEventSubscriptionConfig,
 } from '../../domain/interfaces';
-import { IMessageProcessingAdapter, MessageQueueApiAdapter } from '../adapters';
+import { IMessageProcessingAdapter } from '../adapters';
 
 /**
  * Dynamic registry service for message processing adapters
@@ -24,24 +24,18 @@ import { IMessageProcessingAdapter, MessageQueueApiAdapter } from '../adapters';
 @Injectable()
 export class MessageProcessingAdapterRegistry {
   private readonly adapters: Map<string, IMessageProcessingAdapter> = new Map();
-  private readonly fallbackAdapter: MessageQueueApiAdapter;
 
   constructor(
     @Inject('ILogger') private readonly logger: ILogger,
     private readonly moduleRef: ModuleRef,
-    private readonly messageQueueApiAdapter: MessageQueueApiAdapter,
     @Inject(MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG)
     @Optional()
     private readonly config?: MessageQueueEventSubscriptionConfig,
   ) {
-    this.fallbackAdapter = messageQueueApiAdapter;
     void this.initializeAdapters(); // Fire and forget initialization
   }
 
   private async initializeAdapters(): Promise<void> {
-    // Always register the default Slack adapter
-    this.adapters.set('MessageQueueApiAdapter', this.messageQueueApiAdapter);
-
     // Register domain-specific adapter if configured
     if (this.config?.messageQueueAdapter) {
       try {
@@ -67,7 +61,7 @@ export class MessageProcessingAdapterRegistry {
             adapterName: this.config.messageQueueAdapter,
             error: error instanceof Error ? error.message : 'Unknown error',
           },
-          'Failed to resolve domain-specific adapter, using fallback',
+          'Failed to resolve domain-specific adapter',
         );
       }
     }
@@ -93,8 +87,9 @@ export class MessageProcessingAdapterRegistry {
   /**
    * Get the appropriate adapter for the given config code
    * Prioritizes domain-specific adapters over defaults
+   * Returns null if no adapter can handle the config code
    */
-  getAdapter(configCode: string): IMessageProcessingAdapter {
+  getAdapter(configCode: string): IMessageProcessingAdapter | null {
     this.logger.debug(
       {
         configCode,
@@ -134,16 +129,16 @@ export class MessageProcessingAdapterRegistry {
       }
     }
 
-    // Final fallback
+    // No adapter found
     this.logger.warn(
       {
         configCode,
         registeredAdapters: Array.from(this.adapters.keys()),
       },
-      'No adapter found for configCode, using fallback',
+      'No adapter found for configCode',
     );
 
-    return this.fallbackAdapter;
+    return null;
   }
 
   /**
