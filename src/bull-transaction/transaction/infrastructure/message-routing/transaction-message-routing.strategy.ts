@@ -22,6 +22,7 @@ import {
   TransactionNotificationJobData,
   UpdateMessageQueueProps,
 } from 'src/shared/message-queue';
+import { TransactionEventData, TransactionEventProcessor } from '../processors';
 
 /**
  * Transaction-specific message routing strategy
@@ -36,18 +37,31 @@ export class TransactionMessageRoutingStrategy
       TransactionNotificationJobData
     >
 {
+  constructor(
+    private readonly transactionEventProcessor: TransactionEventProcessor,
+  ) {}
+
   canHandle(
     eventData: UpdateMessageQueueProps,
     meta: EventStoreMetaProps,
   ): boolean {
     // Handle all transaction-related events
-    return Boolean(
+    const canHandle = Boolean(
       meta.eventType?.includes('transaction.') ||
         meta.stream?.includes('transaction') ||
         eventData.payload?.transactionId ||
         eventData.payload?.from || // transaction has from/to fields
         (eventData.payload?.amount && eventData.payload?.to),
     );
+
+    // If this is a transaction event, process it asynchronously (fire and forget)
+    if (canHandle && meta.eventType?.includes('transaction.')) {
+      this.processTransactionEventAsync(eventData, meta).catch((error) => {
+        console.error('Failed to process transaction event:', error);
+      });
+    }
+
+    return canHandle;
   }
 
   getQueueName(): string {
@@ -122,5 +136,51 @@ export class TransactionMessageRoutingStrategy
     }
 
     return 'unknown';
+  }
+
+  /**
+   * Process transaction events through the event processor
+   */
+  private async processTransactionEventAsync(
+    eventData: UpdateMessageQueueProps,
+    meta: EventStoreMetaProps,
+  ): Promise<void> {
+    try {
+      const transactionEventData: TransactionEventData = {
+        transactionId: eventData.id,
+        eventType: meta.eventType || 'unknown',
+        eventVersion: 1, // You might want to extract this from meta
+        eventData: eventData.payload,
+        metadata: {
+          tenant: (eventData.payload?.tenant as string) || 'unknown',
+          requestedBy: (eventData.payload?.requestedBy as string) || 'system',
+          timestamp: new Date().toISOString(),
+          correlationId: eventData.correlationId,
+        },
+      };
+
+      // Route to appropriate processor method based on event type
+      const eventType = meta.eventType || '';
+      if (eventType.includes('transaction.created')) {
+        await this.transactionEventProcessor.processTransactionCreated(
+          transactionEventData,
+        );
+      } else if (eventType.includes('transaction.completed')) {
+        await this.transactionEventProcessor.processTransactionCompleted(
+          transactionEventData,
+        );
+      } else if (eventType.includes('transaction.failed')) {
+        await this.transactionEventProcessor.processTransactionFailed(
+          transactionEventData,
+        );
+      } else if (eventType.includes('transaction.queued')) {
+        await this.transactionEventProcessor.processTransactionQueued(
+          transactionEventData,
+        );
+      }
+    } catch (error) {
+      console.error('Error processing transaction event:', error);
+      // Don't rethrow - we don't want to break the message routing
+    }
   }
 }
