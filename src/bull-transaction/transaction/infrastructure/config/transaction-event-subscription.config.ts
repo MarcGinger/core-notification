@@ -72,9 +72,10 @@ export const createTransactionEventSubscriptionConfig =
         },
       ],
       customStrategies: [TransactionMessageRoutingStrategy],
-      // message queue adapter
+
+      // Domain configuration
+      domain: 'transaction',
       messageQueueAdapter: 'TransactionMessageAdapter',
-      // routeMap
       routeMap,
     };
   };

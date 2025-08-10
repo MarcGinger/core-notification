@@ -8,12 +8,12 @@
  * Confidential and proprietary.
  */
 
-import { Injectable, Inject, Optional } from '@nestjs/common';
-import { IMessageRoutingStrategy, JobType, QueueRoute } from '../../types';
-import { 
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import {
   MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG,
-  MessageQueueEventSubscriptionConfig 
+  MessageQueueEventSubscriptionConfig,
 } from '../../domain/interfaces';
+import { IMessageRoutingStrategy, JobType, QueueRoute } from '../../types';
 
 /**
  * Default routing strategy that maps job types to appropriate queues
@@ -27,7 +27,7 @@ export class DefaultMessageRoutingStrategy implements IMessageRoutingStrategy {
       queueName: 'notifications',
       options: { attempts: 3, priority: 5 },
     },
-    
+
     // Default transaction routes
     'transaction.settle': {
       queueName: 'transactions',
@@ -41,7 +41,7 @@ export class DefaultMessageRoutingStrategy implements IMessageRoutingStrategy {
       queueName: 'transactions',
       options: { attempts: 2, priority: 7 },
     },
-    
+
     // Default slack routes
     'slack.message.send': {
       queueName: 'slack-messages',
@@ -106,7 +106,7 @@ export class MessageRoutingStrategyRegistry {
     private readonly config?: MessageQueueEventSubscriptionConfig,
   ) {
     // Use domain-aware strategy if configuration is provided, otherwise default
-    this.strategy = config 
+    this.strategy = config
       ? new DomainAwareRoutingStrategy(config)
       : new DefaultMessageRoutingStrategy();
   }

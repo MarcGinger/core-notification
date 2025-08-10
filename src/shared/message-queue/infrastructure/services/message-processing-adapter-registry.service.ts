@@ -15,10 +15,7 @@ import {
   MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG,
   MessageQueueEventSubscriptionConfig,
 } from '../../domain/interfaces';
-import {
-  IMessageProcessingAdapter,
-  MessageQueueApiAdapter,
-} from '../adapters';
+import { IMessageProcessingAdapter, MessageQueueApiAdapter } from '../adapters';
 
 /**
  * Dynamic registry service for message processing adapters
@@ -38,7 +35,7 @@ export class MessageProcessingAdapterRegistry {
     private readonly config?: MessageQueueEventSubscriptionConfig,
   ) {
     this.fallbackAdapter = messageQueueApiAdapter;
-    this.initializeAdapters();
+    void this.initializeAdapters(); // Fire and forget initialization
   }
 
   private async initializeAdapters(): Promise<void> {
@@ -48,13 +45,15 @@ export class MessageProcessingAdapterRegistry {
     // Register domain-specific adapter if configured
     if (this.config?.messageQueueAdapter) {
       try {
-        const domainAdapter = await this.moduleRef.get(
+        const domainAdapter: unknown = await this.moduleRef.get(
           this.config.messageQueueAdapter,
           { strict: false },
         );
-        if (domainAdapter) {
+
+        // Type guard to check if it's a valid adapter
+        if (this.isValidAdapter(domainAdapter)) {
           this.adapters.set(this.config.messageQueueAdapter, domainAdapter);
-          this.logger.info(
+          this.logger.log(
             {
               adapterName: this.config.messageQueueAdapter,
               domain: this.config.domain,
@@ -66,12 +65,29 @@ export class MessageProcessingAdapterRegistry {
         this.logger.warn(
           {
             adapterName: this.config.messageQueueAdapter,
-            error: error.message,
+            error: error instanceof Error ? error.message : 'Unknown error',
           },
           'Failed to resolve domain-specific adapter, using fallback',
         );
       }
     }
+  }
+
+  /**
+   * Type guard to check if an object is a valid message processing adapter
+   */
+  private isValidAdapter(obj: unknown): obj is IMessageProcessingAdapter {
+    if (!obj || typeof obj !== 'object') {
+      return false;
+    }
+
+    const candidate = obj as Record<string, unknown>;
+    return (
+      'processMessage' in candidate &&
+      'canHandle' in candidate &&
+      typeof candidate.processMessage === 'function' &&
+      typeof candidate.canHandle === 'function'
+    );
   }
 
   /**
@@ -135,7 +151,7 @@ export class MessageProcessingAdapterRegistry {
    */
   registerAdapter(name: string, adapter: IMessageProcessingAdapter): void {
     this.adapters.set(name, adapter);
-    this.logger.info(
+    this.logger.log(
       { adapterName: name },
       'Dynamically registered message adapter',
     );

@@ -10,6 +10,11 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import { ILogger } from 'src/shared/logger';
+import {
+  AdapterProcessRequest,
+  AdapterProcessResponse,
+  IMessageProcessingAdapter,
+} from './adapter.interface';
 
 /**
  * Request data for sending a Message Queue message
@@ -51,8 +56,58 @@ interface MessageQueueApiChatPostMessageQueueResponse {
  * Contains no business logic - only technical integration
  */
 @Injectable()
-export class MessageQueueApiAdapter {
+export class MessageQueueApiAdapter implements IMessageProcessingAdapter {
   constructor(@Inject('ILogger') private readonly logger: ILogger) {}
+
+  /**
+   * Check if this adapter can handle the given config code
+   * Handles Slack-related config codes
+   */
+  canHandle(configCode: string): boolean {
+    const slackConfigCodes = [
+      'slack-notification',
+      'slack-alert',
+      'slack-message',
+      'notification',
+      'alert',
+      'message',
+    ];
+    return slackConfigCodes.includes(configCode);
+  }
+
+  /**
+   * Process a message using the common adapter interface
+   */
+  async processMessage(
+    request: AdapterProcessRequest,
+  ): Promise<AdapterProcessResponse> {
+    if (!request.channel || !request.text || !request.botToken) {
+      return {
+        success: false,
+        error: 'Missing required fields: channel, text, or botToken',
+      };
+    }
+
+    const slackRequest: MessageQueueApiSendRequest = {
+      channel: request.channel,
+      text: request.text,
+      botToken: request.botToken,
+    };
+
+    const response = await this.sendMessage(slackRequest);
+
+    return {
+      success: response.success,
+      timestamp: response.timestamp,
+      channel: response.channel,
+      error: response.error,
+      metadata: {
+        correlationId: request.correlationId,
+        userId: request.userId,
+        tenant: request.tenant,
+      },
+    };
+  }
 
   /**
    * Send a message to MessageQueue Web API

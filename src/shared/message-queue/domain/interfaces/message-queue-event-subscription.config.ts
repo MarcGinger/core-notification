@@ -24,21 +24,21 @@ export interface EventSubscriptionConfig {
 export interface MessageQueueEventSubscriptionConfig {
   eventSubscriptions: EventSubscriptionConfig[];
   customStrategies?: Type<any>[];
-  
+
   /**
    * Domain-specific message queue adapter name
    * Allows each domain to specify which adapter to use for message processing
    * E.g., 'TransactionMessageAdapter', 'SlackMessageAdapter', etc.
    */
   messageQueueAdapter?: string;
-  
+
   /**
    * Domain-specific route configuration
    * Maps job types to queue names and options for this domain
    * Overrides default routing for domain-specific requirements
    */
   routeMap?: Record<string, QueueRoute>;
-  
+
   /**
    * Optional domain identifier for scoping configuration
    */
