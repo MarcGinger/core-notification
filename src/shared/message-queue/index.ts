@@ -19,7 +19,6 @@ export { MessageQueueEventHandler } from './infrastructure/event-handlers/messag
 
 // Strategy exports
 export {
-  DefaultDataProcessingStrategy,
   IMessageRoutingStrategy,
   StandardJobOptions,
 } from './infrastructure/event-handlers/message-queue-event.handler';

@@ -8,15 +8,10 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { IUserToken } from 'src/shared/auth';
-import {
-  JOB_OPTIONS_TEMPLATES,
-  QUEUE_NAMES,
-  QUEUE_PRIORITIES,
-} from 'src/shared/infrastructure/bullmq';
+import { QUEUE_NAMES } from 'src/shared/infrastructure/bullmq';
 import { EventStoreMetaProps } from 'src/shared/infrastructure/event-store';
 import { ILogger } from 'src/shared/logger';
 import { UpdateMessageQueueProps } from '../../domain/properties';
-import { DataProcessingJobData } from '../job-data';
 
 /**
  * Generic strategy interface for routing messages to different queues
@@ -49,63 +44,6 @@ export interface StandardJobOptions {
 }
 
 /**
- * Default data processing routing strategy (fallback)
- */
-@Injectable()
-export class DefaultDataProcessingStrategy
-  implements
-    IMessageRoutingStrategy<
-      UpdateMessageQueueProps,
-      StandardJobOptions,
-      DataProcessingJobData
-    >
-{
-  canHandle(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _eventData: UpdateMessageQueueProps,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _meta: EventStoreMetaProps,
-  ): boolean {
-    // This is the fallback strategy - always returns true if others don't match
-    return true;
-  }
-
-  getQueueName(): string {
-    return QUEUE_NAMES.DATA_PROCESSING;
-  }
-
-  getJobType(): string {
-    return 'process-data';
-  }
-
-  getJobOptions(eventData: UpdateMessageQueueProps): StandardJobOptions {
-    return {
-      ...JOB_OPTIONS_TEMPLATES.SCHEDULED,
-      priority: eventData.priority || QUEUE_PRIORITIES.LOW,
-      delay: 0,
-    };
-  }
-
-  transformData(
-    eventData: UpdateMessageQueueProps,
-    user: IUserToken,
-  ): DataProcessingJobData {
-    return {
-      dataType: 'message-queue-event',
-      dataId: eventData.id,
-      operation: 'process-generic-message',
-      parameters: {
-        ...eventData.payload,
-        correlationId: eventData.correlationId,
-      },
-      tenant: user.tenant || 'unknown',
-      correlationId: eventData.correlationId,
-      userId: user.sub,
-    };
-  }
-}
-
-/**
  * Generic Message Queue Event Handler
  * Routes events to appropriate queues using dynamically registered strategies
  */
@@ -123,16 +61,12 @@ export class MessageQueueEventHandler {
     private readonly notificationQueue: Queue,
     @InjectQueue(QUEUE_NAMES.DATA_PROCESSING)
     private readonly dataProcessingQueue: Queue,
-    private readonly defaultDataProcessingStrategy: DefaultDataProcessingStrategy,
     @Optional()
     @Inject('CUSTOM_MESSAGE_ROUTING_STRATEGIES')
     private readonly customStrategies?: IMessageRoutingStrategy[],
   ) {
     // Initialize routing strategies: custom strategies first, then fallback
-    this.routingStrategies = [
-      ...(this.customStrategies || []),
-      this.defaultDataProcessingStrategy, // Always last as fallback
-    ];
+    this.routingStrategies = this.customStrategies || [];
 
     this.logger.log(
       {

@@ -17,7 +17,6 @@ import {
   MessageQueueEventSubscriptionConfig,
 } from './domain/interfaces';
 import {
-  DefaultDataProcessingStrategy,
   MessageQueueEventHandler,
   MessageQueueEventSubscriptionManager,
 } from './infrastructure/event-handlers';
@@ -33,9 +32,6 @@ import {
     EventStoreSharedModule, // Provides EventStore integration
   ],
   providers: [
-    // Default fallback strategy
-    DefaultDataProcessingStrategy,
-
     // Main event handler that uses strategies
     MessageQueueEventHandler,
 
@@ -46,7 +42,6 @@ import {
     // Export for use in other modules
     MessageQueueEventHandler,
     MessageQueueEventSubscriptionManager,
-    DefaultDataProcessingStrategy,
   ],
 })
 export class GenericMessageQueueModule {
@@ -74,9 +69,6 @@ export class GenericMessageQueueModule {
           inject: options.inject || [],
         },
 
-        // Default fallback strategy
-        DefaultDataProcessingStrategy,
-
         // Main event handler that uses strategies
         MessageQueueEventHandler,
 
@@ -87,7 +79,6 @@ export class GenericMessageQueueModule {
         // Export for use in other modules
         MessageQueueEventHandler,
         MessageQueueEventSubscriptionManager,
-        DefaultDataProcessingStrategy,
       ],
     };
   }
