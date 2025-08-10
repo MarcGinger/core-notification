@@ -286,18 +286,7 @@ export class MessageQueueEventHandler {
    * Check if event type is a valid message queue event
    */
   private isValidMessageQueueEvent(eventType: string): boolean {
-    const validEventTypes = [
-      MessageQueueApplicationCreatedEvent.EVENT_TYPE,
-      'MessageQueueCreatedEvent',
-      'MessageQueueScheduledEvent',
-      'MessageQueueUpdatedEvent',
-      // Transaction events that should trigger notifications
-      'transaction.created.v1',
-      'transaction.completed.v1',
-      'transaction.failed.v1',
-      'transaction.queued.v1',
-      'transaction.retrying.v1',
-    ];
+    const validEventTypes = [MessageQueueApplicationCreatedEvent.EVENT_TYPE];
 
     return validEventTypes.some((validType) =>
       eventType.toLowerCase().includes(validType.toLowerCase()),
