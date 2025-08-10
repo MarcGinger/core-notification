@@ -20,6 +20,7 @@ import { TransactionApplicationService } from './application/services';
 import { TransactionUseCases } from './application/usecases';
 import { TransactionExceptionMessage } from './domain/exceptions';
 import { TransactionDomainService } from './domain/services';
+import { TransactionApiAdapter } from './infrastructure/adapters';
 import { createTransactionEventSubscriptionConfig } from './infrastructure/config/transaction-event-subscription.config';
 import { TransactionController } from './infrastructure/controllers';
 import {
@@ -27,12 +28,16 @@ import {
   TransactionEventSubscriptionManager,
 } from './infrastructure/event-handlers';
 import { TransactionMessageRoutingStrategy } from './infrastructure/message-routing';
-import { TransactionEventProcessor } from './infrastructure/processors';
+import {
+  TransactionEventProcessor,
+  TransactionProcessor,
+} from './infrastructure/processors';
 import {
   TransactionMemoryProjection,
   TransactionProjectionManager,
 } from './infrastructure/projectors';
 import { TransactionRepository } from './infrastructure/repositories';
+import { TransactionJobDispatcher } from './infrastructure/services';
 
 @Module({
   imports: [
@@ -49,6 +54,12 @@ import { TransactionRepository } from './infrastructure/repositories';
     TransactionDomainService,
     TransactionRepository,
     TransactionApplicationService,
+
+    // Infrastructure adapters
+    TransactionApiAdapter,
+
+    // Job dispatchers
+    TransactionJobDispatcher,
 
     ...TransactionCommands,
     ...TransactionUseCases,
@@ -69,6 +80,9 @@ import { TransactionRepository } from './infrastructure/repositories';
 
     // Event processor for handling domain events
     TransactionEventProcessor,
+
+    // BullMQ worker processor for handling transaction processing jobs
+    TransactionProcessor,
 
     // Transaction event handler for business logic
     TransactionEventHandler,
