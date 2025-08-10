@@ -12,10 +12,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
 import { ILogger } from 'src/shared/logger';
-import {
-  CreateTransactionCommand,
-  SendTransactionNotificationCommand,
-} from '../../application/commands';
+import { CreateTransactionCommand } from '../../application/commands';
 import { ITransaction } from '../../domain/entities';
 import { CreateTransactionProps } from '../../domain/properties';
 
@@ -64,11 +61,6 @@ export class TransactionApplicationService {
       CreateTransactionCommand,
       ITransaction
     >(new CreateTransactionCommand(user, dto));
-
-    // Send notification via command bus (proper CQRS pattern)
-    await this.commandBus.execute(
-      new SendTransactionNotificationCommand(entity, user, 'created'),
-    );
 
     return entity;
   }
