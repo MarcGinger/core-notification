@@ -11,7 +11,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { JobPayloadMap } from 'src/shared/message-queue/types';
+import { TransactionJobPayloadMap } from '../../domain/job-types';
 
 /**
  * Transaction Domain Worker
@@ -29,26 +29,24 @@ export class TransactionWorker extends WorkerHost {
   async process(job: Job): Promise<any> {
     this.logger.log(`Processing job ${job.id} of type: ${job.name}`);
 
-    const { type, payload, meta } = job.data;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const { type, payload } = job.data;
 
     try {
       switch (type) {
         case 'transaction.settle':
           return await this.handleSettlement(
-            payload as JobPayloadMap['transaction.settle'],
-            meta,
+            payload as TransactionJobPayloadMap['transaction.settle'],
           );
 
         case 'transaction.refund':
           return await this.handleRefund(
-            payload as JobPayloadMap['transaction.refund'],
-            meta,
+            payload as TransactionJobPayloadMap['transaction.refund'],
           );
 
         case 'transaction.validate':
           return await this.handleValidation(
-            payload as JobPayloadMap['transaction.validate'],
-            meta,
+            payload as TransactionJobPayloadMap['transaction.validate'],
           );
 
         default:
@@ -64,8 +62,7 @@ export class TransactionWorker extends WorkerHost {
    * Handle transaction settlement
    */
   private async handleSettlement(
-    payload: JobPayloadMap['transaction.settle'],
-    meta: any,
+    payload: TransactionJobPayloadMap['transaction.settle'],
   ): Promise<void> {
     const { txId, amount, currency, fromAccount, toAccount } = payload;
 
@@ -90,8 +87,7 @@ export class TransactionWorker extends WorkerHost {
    * Handle transaction refund
    */
   private async handleRefund(
-    payload: JobPayloadMap['transaction.refund'],
-    meta: any,
+    payload: TransactionJobPayloadMap['transaction.refund'],
   ): Promise<void> {
     const { txId, reason, amount } = payload;
 
@@ -116,8 +112,7 @@ export class TransactionWorker extends WorkerHost {
    * Handle transaction validation
    */
   private async handleValidation(
-    payload: JobPayloadMap['transaction.validate'],
-    meta: any,
+    payload: TransactionJobPayloadMap['transaction.validate'],
   ): Promise<void> {
     const { txId, rules } = payload;
 

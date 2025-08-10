@@ -33,53 +33,15 @@ export interface JobOptions {
 }
 
 /**
- * Central registry for all job types across domains
- * Each domain adds their job types here to maintain type safety
+ * Generic job payload type - domains define their own specific types
  */
-export interface JobPayloadMap {
-  // Notification domain
-  'notification.send': {
-    channel: string;
-    templateCode?: string;
-    payload: any;
-    recipient: string;
-  };
+export type JobPayload = Record<string, any>;
 
-  // Transaction domain
-  'transaction.settle': {
-    txId: string;
-    amount: number;
-    currency: string;
-    fromAccount: string;
-    toAccount: string;
-  };
+export type JobType = string;
 
-  'transaction.refund': {
-    txId: string;
-    reason: string;
-    amount?: number; // partial refund
-  };
-
-  'transaction.validate': {
-    txId: string;
-    rules: string[];
-  };
-
-  // Slack domain
-  'slack.message.send': {
-    channel: string;
-    message: string;
-    templateData?: any;
-  };
-
-  // Add more job types per domain as needed
-}
-
-export type JobType = keyof JobPayloadMap;
-
-export type JobEnvelope<T extends JobType> = {
+export type JobEnvelope<T extends JobType = JobType, P = JobPayload> = {
   type: T;
-  payload: JobPayloadMap[T];
+  payload: P;
   meta: QueueMeta;
   options?: JobOptions;
 };
