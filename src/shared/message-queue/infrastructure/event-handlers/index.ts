@@ -8,5 +8,5 @@
  * Confidential and proprietary.
  */
 
-export * from './message-queue-event.handler';
-export * from './message-queue-event.manager';
+export * from './message-queue-event.model';
+// export * from './message-queue-event.manager';

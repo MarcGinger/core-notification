@@ -14,16 +14,12 @@ export { GenericMessageQueueModule } from './generic-message-queue.module';
 // Configuration exports
 export * from './domain/interfaces';
 
-// DEPRECATED: Handler exports - Use domain-specific handlers instead
-// @deprecated Use domain-specific event handlers (e.g., TransactionEventHandler)
-export { MessageQueueEventHandler } from './infrastructure/event-handlers/message-queue-event.handler';
-
 // DEPRECATED: Strategy exports - Domains should handle their own routing
 // @deprecated Use domain-specific routing logic instead
 export {
   IMessageRoutingStrategy,
   StandardJobOptions,
-} from './infrastructure/event-handlers/message-queue-event.handler';
+} from './infrastructure/event-handlers/message-queue-event.model';
 
 // Job data type exports
 export * from './infrastructure/job-data';
