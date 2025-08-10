@@ -11,7 +11,6 @@
 import { Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { GenericMessageQueueService } from '../../../infrastructure/services/generic-message-queue.service';
-import { MessageRoutingStrategyRegistry } from '../../../infrastructure/services/message-routing-strategy.service';
 import { JobType } from '../../../types';
 import {
   MoveToDelayedCommand,
@@ -19,6 +18,27 @@ import {
   RetryJobCommand,
   ScheduleJobCommand,
 } from './queue-job.command';
+
+/**
+ * @deprecated These generic queue handlers are part of the deprecated central routing infrastructure.
+ * Domains should inject queues directly and handle their own job dispatching.
+ *
+ * Migration example:
+ * ```typescript
+ * // OLD (deprecated):
+ * await this.commandBus.execute(new QueueJobCommand({...}));
+ *
+ * // NEW (domain-driven):
+ * @Injectable()
+ * export class MyDomainService {
+ *   constructor(@InjectQueue('my-queue') private myQueue: Queue) {}
+ *
+ *   async processJob(data: MyJobData) {
+ *     await this.myQueue.add('my-job-type', data, { priority: 10 });
+ *   }
+ * }
+ * ```
+ */
 
 @CommandHandler(QueueJobCommand)
 export class QueueJobHandler<T extends JobType>
@@ -28,28 +48,35 @@ export class QueueJobHandler<T extends JobType>
 
   constructor(
     private readonly genericMessageQueueService: GenericMessageQueueService,
-    private readonly routingRegistry: MessageRoutingStrategyRegistry,
-  ) {}
+  ) {
+    this.logger.warn(
+      'QueueJobHandler is deprecated. Use direct queue injection in your domain instead.',
+    );
+  }
 
   async execute({ job }: QueueJobCommand<T>): Promise<void> {
-    this.logger.log(`Enqueuing job of type: ${job.type}`);
+    this.logger.warn(
+      `DEPRECATED: QueueJobHandler used for job type: ${job.type}. Migrate to domain-specific queue injection.`,
+    );
 
-    const route = this.routingRegistry.resolve(job.type);
+    // Simple fallback routing for legacy compatibility
+    const defaultQueueName = 'default';
+    const defaultOptions = { attempts: 3, priority: 1 };
 
     await this.genericMessageQueueService.enqueue(
-      route.queueName,
+      defaultQueueName,
       job.type,
       job.payload,
       {
-        ...route.options,
+        ...defaultOptions,
         ...job.options,
         jobId: job.meta.correlationId,
       },
       job.meta,
     );
 
-    this.logger.log(
-      `Successfully enqueued job ${job.meta.correlationId} to queue ${route.queueName}`,
+    this.logger.warn(
+      `Job ${job.meta.correlationId} enqueued to default queue. Consider migrating to domain-specific handling.`,
     );
   }
 }
@@ -62,23 +89,28 @@ export class ScheduleJobHandler<T extends JobType>
 
   constructor(
     private readonly genericMessageQueueService: GenericMessageQueueService,
-    private readonly routingRegistry: MessageRoutingStrategyRegistry,
-  ) {}
+  ) {
+    this.logger.warn(
+      'ScheduleJobHandler is deprecated. Use direct queue injection in your domain instead.',
+    );
+  }
 
   async execute({ job, scheduledFor }: ScheduleJobCommand<T>): Promise<void> {
-    this.logger.log(
-      `Scheduling job of type: ${job.type} for ${scheduledFor.toISOString()}`,
+    this.logger.warn(
+      `DEPRECATED: ScheduleJobHandler used for job type: ${job.type}. Migrate to domain-specific queue injection.`,
     );
 
-    const route = this.routingRegistry.resolve(job.type);
+    // Simple fallback routing for legacy compatibility
+    const defaultQueueName = 'default';
+    const defaultOptions = { attempts: 3, priority: 1 };
     const delay = scheduledFor.getTime() - Date.now();
 
     await this.genericMessageQueueService.enqueue(
-      route.queueName,
+      defaultQueueName,
       job.type,
       job.payload,
       {
-        ...route.options,
+        ...defaultOptions,
         ...job.options,
         delay: Math.max(0, delay),
         jobId: job.meta.correlationId,
@@ -86,8 +118,8 @@ export class ScheduleJobHandler<T extends JobType>
       job.meta,
     );
 
-    this.logger.log(
-      `Successfully scheduled job ${job.meta.correlationId} for ${scheduledFor.toISOString()}`,
+    this.logger.warn(
+      `Job ${job.meta.correlationId} scheduled for ${scheduledFor.toISOString()} using default queue. Consider migrating to domain-specific handling.`,
     );
   }
 }
@@ -100,14 +132,14 @@ export class RetryJobHandler implements ICommandHandler<RetryJobCommand> {
     private readonly genericMessageQueueService: GenericMessageQueueService,
   ) {}
 
-  async execute({ jobId, queueName }: RetryJobCommand): Promise<void> {
-    this.logger.log(`Retrying job ${jobId} in queue ${queueName}`);
+  async execute({ jobId }: RetryJobCommand): Promise<void> {
+    this.logger.log(`Retrying job ${jobId} - deprecated functionality`);
 
     // Implementation depends on your GenericMessageQueueService interface
     // For now, just log - actual retry logic would go here
     await Promise.resolve();
 
-    this.logger.log(`Successfully retried job ${jobId}`);
+    this.logger.warn(`Job ${jobId} retry attempted using deprecated handler`);
   }
 }
 

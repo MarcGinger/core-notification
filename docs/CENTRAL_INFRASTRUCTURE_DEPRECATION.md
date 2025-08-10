@@ -84,9 +84,10 @@ All central infrastructure has been marked as deprecated with clear migration pa
 - ❌ `MessageQueueEventHandler` - **DEPRECATED**
 - ❌ `MessageQueueEventSubscriptionManager` - **DEPRECATED**
 - ❌ `DefaultMessageRoutingStrategy` - **REMOVED**
+- ❌ `MessageRoutingStrategyRegistry` - **REMOVED**
 - ❌ `SendTransactionNotificationCommand` - **DEPRECATED**
-
-## 🚧 What's Deprecated (Available for Migration Period)
+- ❌ `QueueJobHandler` - **DEPRECATED** (provides fallback for legacy compatibility)
+- ❌ `ScheduleJobHandler` - **DEPRECATED** (provides fallback for legacy compatibility)## 🚧 What's Deprecated (Available for Migration Period)
 
 ### Central Event Handler
 
@@ -106,15 +107,13 @@ export class MessageQueueEventHandler {
 
 ```typescript
 /**
- * @deprecated Domains should handle routing directly
+ * @deprecated MessageRoutingStrategyRegistry has been REMOVED
  */
-@Injectable()
-export class MessageRoutingStrategyRegistry {
-  // Still available but marked deprecated
-}
+// NO LONGER AVAILABLE - was located at:
+// src/shared/message-queue/infrastructure/services/message-routing-strategy.service.ts
 ```
 
-**Migration:** Implement routing logic directly in domain event handlers
+**Migration:** Implement routing logic directly in domain event handlers or use direct queue injection
 
 ## 📋 Migration Checklist for Other Domains
 

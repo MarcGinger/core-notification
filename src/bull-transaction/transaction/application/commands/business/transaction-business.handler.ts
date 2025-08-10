@@ -8,9 +8,9 @@
  * Confidential and proprietary.
  */
 
-import { Logger } from '@nestjs/common';
-import { CommandBus, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { QueueJobCommand } from 'src/shared/message-queue/application/commands/generic';
+import { Inject, Logger } from '@nestjs/common';
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { ITransactionMessageQueue } from '../../../domain/services/transaction-message-queue.interface';
 import {
   InitiateTransferCommand,
   RefundPaymentCommand,
@@ -19,7 +19,7 @@ import {
 
 /**
  * Business command handlers that validate domain rules
- * then enqueue jobs via generic message queue infrastructure
+ * then enqueue jobs via domain interface (clean architecture approach)
  */
 
 @CommandHandler(InitiateTransferCommand)
@@ -28,7 +28,10 @@ export class InitiateTransferHandler
 {
   private readonly logger = new Logger(InitiateTransferHandler.name);
 
-  constructor(private readonly commandBus: CommandBus) {}
+  constructor(
+    @Inject('ITransactionMessageQueue')
+    private readonly messageQueue: ITransactionMessageQueue,
+  ) {}
 
   async execute(command: InitiateTransferCommand): Promise<void> {
     const { fromAccount, toAccount, amount, currency, correlationId } = command;
@@ -46,27 +49,16 @@ export class InitiateTransferHandler
       throw new Error('Cannot transfer to the same account');
     }
 
-    // Enqueue the settlement job using generic infrastructure
-    await this.commandBus.execute(
-      new QueueJobCommand({
-        type: 'transaction.settle',
-        payload: {
-          txId: correlationId,
-          amount,
-          currency,
-          fromAccount,
-          toAccount,
-        },
-        meta: {
-          correlationId,
-          serviceContext: 'transaction-domain',
-        },
-        options: {
-          attempts: 5,
-          priority: 10,
-          backoff: { type: 'exponential', delay: 5000 },
-        },
-      }),
+    // Enqueue the settlement job using domain interface
+    await this.messageQueue.enqueueSettlement(
+      {
+        txId: correlationId,
+        amount,
+        currency,
+        fromAccount,
+        toAccount,
+      },
+      correlationId,
     );
 
     this.logger.log(`Transfer ${correlationId} queued for settlement`);
@@ -79,7 +71,10 @@ export class RefundPaymentHandler
 {
   private readonly logger = new Logger(RefundPaymentHandler.name);
 
-  constructor(private readonly commandBus: CommandBus) {}
+  constructor(
+    @Inject('ITransactionMessageQueue')
+    private readonly messageQueue: ITransactionMessageQueue,
+  ) {}
 
   async execute(command: RefundPaymentCommand): Promise<void> {
     const { transactionId, reason, amount, correlationId } = command;
@@ -93,24 +88,14 @@ export class RefundPaymentHandler
       throw new Error('Transaction ID is required for refund');
     }
 
-    // Enqueue refund job
-    await this.commandBus.execute(
-      new QueueJobCommand({
-        type: 'transaction.refund',
-        payload: {
-          txId: transactionId,
-          reason,
-          amount,
-        },
-        meta: {
-          correlationId,
-          serviceContext: 'transaction-domain',
-        },
-        options: {
-          attempts: 3,
-          priority: 8,
-        },
-      }),
+    // Enqueue refund job using domain interface
+    await this.messageQueue.enqueueRefund(
+      {
+        txId: transactionId,
+        reason,
+        amount,
+      },
+      correlationId,
     );
 
     this.logger.log(`Refund ${correlationId} queued for processing`);
@@ -123,7 +108,10 @@ export class ValidateTransactionHandler
 {
   private readonly logger = new Logger(ValidateTransactionHandler.name);
 
-  constructor(private readonly commandBus: CommandBus) {}
+  constructor(
+    @Inject('ITransactionMessageQueue')
+    private readonly messageQueue: ITransactionMessageQueue,
+  ) {}
 
   async execute(command: ValidateTransactionCommand): Promise<void> {
     const { transactionId, rules, correlationId } = command;
@@ -137,23 +125,13 @@ export class ValidateTransactionHandler
       throw new Error('At least one validation rule is required');
     }
 
-    // Enqueue validation job
-    await this.commandBus.execute(
-      new QueueJobCommand({
-        type: 'transaction.validate',
-        payload: {
-          txId: transactionId,
-          rules,
-        },
-        meta: {
-          correlationId,
-          serviceContext: 'transaction-domain',
-        },
-        options: {
-          attempts: 2,
-          priority: 7,
-        },
-      }),
+    // Enqueue validation job using domain interface
+    await this.messageQueue.enqueueValidation(
+      {
+        txId: transactionId,
+        rules,
+      },
+      correlationId,
     );
 
     this.logger.log(

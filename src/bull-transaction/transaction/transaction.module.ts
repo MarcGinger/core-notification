@@ -37,6 +37,7 @@ import {
 } from './infrastructure/projectors';
 import { TransactionRepository } from './infrastructure/repositories';
 import { TransactionJobDispatcher } from './infrastructure/services';
+import { TransactionMessageQueueService } from './infrastructure/services/transaction-message-queue.service';
 
 @Module({
   imports: [
@@ -59,6 +60,13 @@ import { TransactionJobDispatcher } from './infrastructure/services';
 
     // Job dispatchers
     TransactionJobDispatcher,
+
+    // Message queue service
+    TransactionMessageQueueService,
+    {
+      provide: 'ITransactionMessageQueue',
+      useExisting: TransactionMessageQueueService,
+    },
 
     ...TransactionCommands,
     ...TransactionUseCases,

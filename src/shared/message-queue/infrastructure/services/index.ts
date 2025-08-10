@@ -11,4 +11,3 @@
 // Export all infrastructure services for easy importing
 export { GenericMessageQueueService } from './generic-message-queue.service';
 export { MessageQueueService } from './message-queue.service';
-export { MessageRoutingStrategyRegistry } from './message-routing-strategy.service';

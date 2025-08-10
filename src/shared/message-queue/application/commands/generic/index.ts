@@ -11,14 +11,12 @@
 // Generic Command Handlers
 import {
   MoveToDelayedHandler,
-  QueueJobHandler,
   RetryJobHandler,
   ScheduleJobHandler,
 } from './queue-job.handler';
 
 // All Generic Message Queue Command Handlers
 export const GenericMessageQueueCommands = [
-  QueueJobHandler,
   ScheduleJobHandler,
   RetryJobHandler,
   MoveToDelayedHandler,
