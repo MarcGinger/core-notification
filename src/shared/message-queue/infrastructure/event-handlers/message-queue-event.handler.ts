@@ -15,7 +15,6 @@ import {
 } from 'src/shared/infrastructure/bullmq';
 import { EventStoreMetaProps } from 'src/shared/infrastructure/event-store';
 import { ILogger } from 'src/shared/logger';
-import { MessageQueueApplicationCreatedEvent } from '../../domain/events';
 import { UpdateMessageQueueProps } from '../../domain/properties';
 import { DataProcessingJobData } from '../job-data';
 
@@ -163,15 +162,6 @@ export class MessageQueueEventHandler {
     );
 
     try {
-      // Validate event type
-      if (!this.isValidMessageQueueEvent(meta.eventType)) {
-        this.logger.debug(
-          { eventType: meta.eventType },
-          'Skipping non-MessageQueue event',
-        );
-        return;
-      }
-
       // Extract tenant and create user context
       const tenant = meta.tenant || this.extractTenantFromStream(meta.stream);
       if (!tenant) {
@@ -197,7 +187,7 @@ export class MessageQueueEventHandler {
           messageId: meta.aggregateId,
           tenant,
         },
-        'Successfully processed and routed MessageQueue event',
+        'Successfully processed and routed message queue event',
       );
     } catch (error) {
       this.logger.error(
@@ -280,17 +270,6 @@ export class MessageQueueEventHandler {
       default:
         return null;
     }
-  }
-
-  /**
-   * Check if event type is a valid message queue event
-   */
-  private isValidMessageQueueEvent(eventType: string): boolean {
-    const validEventTypes = [MessageQueueApplicationCreatedEvent.EVENT_TYPE];
-
-    return validEventTypes.some((validType) =>
-      eventType.toLowerCase().includes(validType.toLowerCase()),
-    );
   }
 
   /**

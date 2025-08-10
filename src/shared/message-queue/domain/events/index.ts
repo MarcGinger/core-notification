@@ -8,4 +8,5 @@
  * Confidential and proprietary.
  */
 
-export * from './message-queue-application-create.event';
+// No domain-specific events exported from shared infrastructure
+// Each domain should define and export its own events
