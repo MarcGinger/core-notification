@@ -8,7 +8,7 @@
  * Confidential and proprietary.
  */
 
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, Module, Provider } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { BullMQModule } from 'src/shared/infrastructure/bullmq';
 import { LoggerModule } from 'src/shared/logger';
@@ -17,11 +17,7 @@ import { LoggerModule } from 'src/shared/logger';
 import { GenericMessageQueueCommands } from './application/commands/generic';
 
 // Infrastructure services
-import {
-  DefaultMessageRoutingStrategy,
-  GenericMessageQueueService,
-  MessageRoutingStrategyRegistry,
-} from './infrastructure/services';
+import { GenericMessageQueueService } from './infrastructure/services';
 
 /**
  * Generic Message Queue Infrastructure Module
@@ -45,17 +41,12 @@ import {
     // Core queue services
     GenericMessageQueueService,
 
-    // Routing strategy
-    DefaultMessageRoutingStrategy,
-    MessageRoutingStrategyRegistry,
-
     // Generic queue commands
     ...GenericMessageQueueCommands,
   ],
   exports: [
     // Export services for domain modules to use
     GenericMessageQueueService,
-    MessageRoutingStrategyRegistry,
 
     // Export commands for domain modules to import
     ...GenericMessageQueueCommands,
@@ -65,24 +56,20 @@ export class GenericMessageQueueInfraModule {
   /**
    * Configure with custom routing strategies if needed
    */
-  static forFeature(options?: { customRoutingStrategy?: any }): DynamicModule {
+  static forFeature(options?: {
+    customRoutingStrategy?: Provider;
+  }): DynamicModule {
     return {
       module: GenericMessageQueueInfraModule,
       imports: [CqrsModule, BullMQModule, LoggerModule],
       providers: [
         GenericMessageQueueService,
-        DefaultMessageRoutingStrategy,
-        MessageRoutingStrategyRegistry,
         ...GenericMessageQueueCommands,
         ...(options?.customRoutingStrategy
           ? [options.customRoutingStrategy]
           : []),
       ],
-      exports: [
-        GenericMessageQueueService,
-        MessageRoutingStrategyRegistry,
-        ...GenericMessageQueueCommands,
-      ],
+      exports: [GenericMessageQueueService, ...GenericMessageQueueCommands],
     };
   }
 }

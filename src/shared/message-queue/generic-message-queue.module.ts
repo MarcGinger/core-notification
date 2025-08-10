@@ -16,10 +16,10 @@ import {
   MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG,
   MessageQueueEventSubscriptionConfig,
 } from './domain/interfaces';
-import {
-  MessageQueueEventHandler,
-  MessageQueueEventSubscriptionManager,
-} from './infrastructure/event-handlers';
+// import {
+//   MessageQueueEventHandler,
+//   MessageQueueEventSubscriptionManager,
+// } from './infrastructure/event-handlers';
 
 /**
  * Generic Message Queue Module
@@ -33,15 +33,14 @@ import {
   ],
   providers: [
     // Main event handler that uses strategies
-    MessageQueueEventHandler,
-
-    // Event subscription manager
-    MessageQueueEventSubscriptionManager,
+    // MessageQueueEventHandler,
+    // // Event subscription manager
+    // MessageQueueEventSubscriptionManager,
   ],
   exports: [
     // Export for use in other modules
-    MessageQueueEventHandler,
-    MessageQueueEventSubscriptionManager,
+    // MessageQueueEventHandler,
+    // MessageQueueEventSubscriptionManager,
   ],
 })
 export class GenericMessageQueueModule {
@@ -69,16 +68,16 @@ export class GenericMessageQueueModule {
           inject: options.inject || [],
         },
 
-        // Main event handler that uses strategies
-        MessageQueueEventHandler,
+        // // Main event handler that uses strategies
+        // MessageQueueEventHandler,
 
-        // Event subscription manager
-        MessageQueueEventSubscriptionManager,
+        // // Event subscription manager
+        // MessageQueueEventSubscriptionManager,
       ],
       exports: [
         // Export for use in other modules
-        MessageQueueEventHandler,
-        MessageQueueEventSubscriptionManager,
+        // MessageQueueEventHandler,
+        // MessageQueueEventSubscriptionManager,
       ],
     };
   }

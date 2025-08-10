@@ -14,7 +14,10 @@ import { BullMQModule } from 'src/shared/infrastructure/bullmq';
 import { LoggerModule } from 'src/shared/logger';
 // import { GenericMessageQueueModule } from 'src/shared/message-queue';
 import { SharedModule } from 'src/shared/shared.module';
-import { GenericMessageQueueModule } from '../../shared/message-queue';
+import {
+  GenericMessageQueueModule,
+  MessageQueueEventHandler,
+} from '../../shared/message-queue';
 import { TransactionCommands } from './application/commands';
 import { TransactionApplicationService } from './application/services';
 import { TransactionUseCases } from './application/usecases';
@@ -63,6 +66,9 @@ import { TransactionJobDispatcher } from './infrastructure/services';
 
     ...TransactionCommands,
     ...TransactionUseCases,
+
+    MessageQueueEventHandler,
+
     {
       provide: 'TRANSACTION_EXCEPTION_MESSAGES',
       useValue: TransactionExceptionMessage,

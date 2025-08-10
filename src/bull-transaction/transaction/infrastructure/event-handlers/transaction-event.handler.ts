@@ -1,10 +1,13 @@
 /**
  * TRANSACTION DOMAIN EVENT HANDLER
- * Processes transaction events and executes business logic through TransactionEventProcessor
- * This handler runs BEFORE the generic message queue routing to execute domain-specific logic
+ * Processes transaction events and routes them to appropriate message queues
+ * Handles both business logic execution and message queue routing in one place
  */
 
+import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable } from '@nestjs/common';
+import { Queue } from 'bullmq';
+import { QUEUE_NAMES } from 'src/shared/infrastructure/bullmq';
 import { EventStoreMetaProps } from 'src/shared/infrastructure/event-store';
 import { ILogger } from 'src/shared/logger';
 import { UpdateMessageQueueProps } from 'src/shared/message-queue/domain/properties';
@@ -15,19 +18,22 @@ import {
 
 /**
  * Transaction-specific event handler
- * Executes business logic for transaction events before they're routed to notification queues
+ * Executes business logic for transaction events AND routes them to notification queues
+ * Owns the complete transaction event processing pipeline
  */
 @Injectable()
 export class TransactionEventHandler {
   constructor(
     @Inject('ILogger') private readonly logger: ILogger,
     private readonly transactionEventProcessor: TransactionEventProcessor,
+    @InjectQueue(QUEUE_NAMES.NOTIFICATION)
+    private readonly notificationQueue: Queue,
   ) {
     this.logger.log(
       {
         component: 'TransactionEventHandler',
       },
-      'Transaction event handler initialized',
+      'Transaction event handler initialized with queue routing',
     );
   }
 
@@ -135,6 +141,9 @@ export class TransactionEventHandler {
         );
       }
 
+      // After business logic processing, route to notification queue
+      await this.routeToNotificationQueue(eventData, meta);
+
       this.logger.log(
         {
           component: 'TransactionEventHandler',
@@ -142,7 +151,7 @@ export class TransactionEventHandler {
           eventType,
           transactionId: eventData.id,
         },
-        `Successfully processed transaction event: ${eventType}`,
+        `Successfully processed transaction event and routed to notification queue: ${eventType}`,
       );
     } catch (error) {
       this.logger.error(
@@ -174,5 +183,74 @@ export class TransactionEventHandler {
         meta.eventType?.includes('transaction') ||
         eventType?.includes('transaction.'),
     );
+  }
+
+  /**
+   * Routes transaction events to notification queue for further processing
+   */
+  private async routeToNotificationQueue(
+    eventData: UpdateMessageQueueProps,
+    meta: EventStoreMetaProps,
+  ): Promise<void> {
+    try {
+      const jobData = {
+        eventData,
+        meta,
+        routedBy: 'TransactionEventHandler',
+        routedAt: new Date().toISOString(),
+      };
+
+      await this.notificationQueue.add(
+        'process-transaction-notification',
+        jobData,
+        {
+          priority: this.getJobPriority(
+            (eventData.payload?.eventType as string) || '',
+          ),
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
+      );
+
+      this.logger.log(
+        {
+          component: 'TransactionEventHandler',
+          operation: 'routeToNotificationQueue',
+          eventType: eventData.payload?.eventType,
+          transactionId: eventData.id,
+          jobType: 'process-transaction-notification',
+        },
+        `Successfully routed transaction event to notification queue`,
+      );
+    } catch (error) {
+      this.logger.error(
+        {
+          component: 'TransactionEventHandler',
+          operation: 'routeToNotificationQueue',
+          eventType: eventData.payload?.eventType,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        `Failed to route to notification queue: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Determines job priority based on event type
+   */
+  private getJobPriority(eventType: string): number {
+    if (eventType.includes('transaction.failed')) {
+      return 1; // High priority for failures
+    } else if (eventType.includes('transaction.completed')) {
+      return 2; // Medium-high priority for completions
+    } else if (eventType.includes('transaction.created')) {
+      return 3; // Medium priority for creation
+    } else {
+      return 5; // Lower priority for other events
+    }
   }
 }
