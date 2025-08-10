@@ -8,7 +8,7 @@
  * Confidential and proprietary.
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { IUserToken } from 'src/shared/auth';
 import {
   JOB_OPTIONS_TEMPLATES,
@@ -16,6 +16,7 @@ import {
   QUEUE_PRIORITIES,
 } from 'src/shared/infrastructure/bullmq';
 import { EventStoreMetaProps } from 'src/shared/infrastructure/event-store';
+import { ILogger } from 'src/shared/logger';
 import {
   IMessageRoutingStrategy,
   StandardJobOptions,
@@ -38,13 +39,32 @@ export class TransactionMessageRoutingStrategy
     >
 {
   constructor(
+    @Inject('ILogger') private readonly logger: ILogger,
     private readonly transactionEventProcessor: TransactionEventProcessor,
-  ) {}
+  ) {
+    this.logger.log(
+      {
+        component: 'TransactionMessageRoutingStrategy',
+      },
+      'Transaction message routing strategy initialized',
+    );
+  }
 
   canHandle(
     eventData: UpdateMessageQueueProps,
     meta: EventStoreMetaProps,
   ): boolean {
+    this.logger.log(
+      {
+        component: 'TransactionMessageRoutingStrategy',
+        operation: 'canHandle',
+        eventType: meta.eventType,
+        stream: meta.stream,
+        eventId: eventData.id,
+      },
+      `Checking if can handle event: ${meta.eventType} from stream: ${meta.stream}`,
+    );
+
     // Handle all transaction-related events
     const canHandle = Boolean(
       meta.eventType?.includes('transaction.') ||
@@ -54,10 +74,46 @@ export class TransactionMessageRoutingStrategy
         (eventData.payload?.amount && eventData.payload?.to),
     );
 
+    this.logger.log(
+      {
+        component: 'TransactionMessageRoutingStrategy',
+        operation: 'canHandle',
+        eventType: meta.eventType,
+        canHandle,
+        reasons: {
+          eventTypeIncludes: meta.eventType?.includes('transaction.'),
+          streamIncludes: meta.stream?.includes('transaction'),
+          hasTransactionId: !!eventData.payload?.transactionId,
+          hasFromField: !!eventData.payload?.from,
+          hasAmountAndTo: !!(
+            eventData.payload?.amount && eventData.payload?.to
+          ),
+        },
+      },
+      `Can handle result: ${canHandle} for event: ${meta.eventType}`,
+    );
+
     // If this is a transaction event, process it asynchronously (fire and forget)
     if (canHandle && meta.eventType?.includes('transaction.')) {
+      this.logger.log(
+        {
+          component: 'TransactionMessageRoutingStrategy',
+          operation: 'canHandle',
+          eventType: meta.eventType,
+        },
+        `Triggering async event processing for: ${meta.eventType}`,
+      );
+
       this.processTransactionEventAsync(eventData, meta).catch((error) => {
-        console.error('Failed to process transaction event:', error);
+        this.logger.error(
+          {
+            component: 'TransactionMessageRoutingStrategy',
+            operation: 'processTransactionEventAsync',
+            eventType: meta.eventType,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+          'Failed to process transaction event',
+        );
       });
     }
 
@@ -145,6 +201,16 @@ export class TransactionMessageRoutingStrategy
     eventData: UpdateMessageQueueProps,
     meta: EventStoreMetaProps,
   ): Promise<void> {
+    this.logger.log(
+      {
+        component: 'TransactionMessageRoutingStrategy',
+        operation: 'processTransactionEventAsync',
+        eventType: meta.eventType,
+        eventId: eventData.id,
+      },
+      `Starting async processing for transaction event: ${meta.eventType}`,
+    );
+
     try {
       const transactionEventData: TransactionEventData = {
         transactionId: eventData.id,
@@ -159,27 +225,102 @@ export class TransactionMessageRoutingStrategy
         },
       };
 
+      this.logger.log(
+        {
+          component: 'TransactionMessageRoutingStrategy',
+          operation: 'processTransactionEventAsync',
+          eventType: meta.eventType,
+          transactionId: transactionEventData.transactionId,
+          metadata: transactionEventData.metadata,
+        },
+        `Created transaction event data for processing: ${meta.eventType}`,
+      );
+
       // Route to appropriate processor method based on event type
       const eventType = meta.eventType || '';
       if (eventType.includes('transaction.created')) {
+        this.logger.log(
+          {
+            component: 'TransactionMessageRoutingStrategy',
+            operation: 'processTransactionEventAsync',
+            eventType,
+            route: 'processTransactionCreated',
+          },
+          `Routing to processTransactionCreated for: ${eventType}`,
+        );
         await this.transactionEventProcessor.processTransactionCreated(
           transactionEventData,
         );
       } else if (eventType.includes('transaction.completed')) {
+        this.logger.log(
+          {
+            component: 'TransactionMessageRoutingStrategy',
+            operation: 'processTransactionEventAsync',
+            eventType,
+            route: 'processTransactionCompleted',
+          },
+          `Routing to processTransactionCompleted for: ${eventType}`,
+        );
         await this.transactionEventProcessor.processTransactionCompleted(
           transactionEventData,
         );
       } else if (eventType.includes('transaction.failed')) {
+        this.logger.log(
+          {
+            component: 'TransactionMessageRoutingStrategy',
+            operation: 'processTransactionEventAsync',
+            eventType,
+            route: 'processTransactionFailed',
+          },
+          `Routing to processTransactionFailed for: ${eventType}`,
+        );
         await this.transactionEventProcessor.processTransactionFailed(
           transactionEventData,
         );
       } else if (eventType.includes('transaction.queued')) {
+        this.logger.log(
+          {
+            component: 'TransactionMessageRoutingStrategy',
+            operation: 'processTransactionEventAsync',
+            eventType,
+            route: 'processTransactionQueued',
+          },
+          `Routing to processTransactionQueued for: ${eventType}`,
+        );
         await this.transactionEventProcessor.processTransactionQueued(
           transactionEventData,
         );
+      } else {
+        this.logger.warn(
+          {
+            component: 'TransactionMessageRoutingStrategy',
+            operation: 'processTransactionEventAsync',
+            eventType,
+          },
+          `No specific processor route found for event type: ${eventType}`,
+        );
       }
+
+      this.logger.log(
+        {
+          component: 'TransactionMessageRoutingStrategy',
+          operation: 'processTransactionEventAsync',
+          eventType: meta.eventType,
+          status: 'success',
+        },
+        `Successfully completed async processing for: ${meta.eventType}`,
+      );
     } catch (error) {
-      console.error('Error processing transaction event:', error);
+      this.logger.error(
+        {
+          component: 'TransactionMessageRoutingStrategy',
+          operation: 'processTransactionEventAsync',
+          eventType: meta.eventType,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        `Error processing transaction event: ${meta.eventType}`,
+      );
       // Don't rethrow - we don't want to break the message routing
     }
   }

@@ -54,7 +54,34 @@ export class MessageQueueEventSubscriptionManager
     @Optional()
     @Inject(MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG)
     private readonly subscriptionConfig?: MessageQueueEventSubscriptionConfig,
-  ) {}
+  ) {
+    // Log the subscription configuration to debug strategy registration
+    this.logger.log(
+      {
+        component: 'MessageQueueEventSubscriptionManager',
+        method: 'constructor',
+        hasSubscriptionConfig: !!this.subscriptionConfig,
+        configDetails: this.subscriptionConfig
+          ? {
+              eventSubscriptionsCount:
+                this.subscriptionConfig.eventSubscriptions?.length || 0,
+              customStrategiesCount:
+                this.subscriptionConfig.customStrategies?.length || 0,
+              eventSubscriptions:
+                this.subscriptionConfig.eventSubscriptions?.map((sub) => ({
+                  streamPattern: sub.streamPattern,
+                  purpose: sub.purpose,
+                  description: sub.description,
+                })),
+              customStrategies: this.subscriptionConfig.customStrategies?.map(
+                (strategy) => strategy.name,
+              ),
+            }
+          : null,
+      },
+      `MessageQueueEventSubscriptionManager initialized with config: ${this.subscriptionConfig ? 'PROVIDED' : 'NOT PROVIDED'}`,
+    );
+  }
 
   /**
    * Initialize the projection on module startup
@@ -118,17 +145,46 @@ export class MessageQueueEventSubscriptionManager
   private getEventSubscriptions(): EventSubscriptionConfig[] {
     // Use injected configuration if available, otherwise fall back to default
     if (this.subscriptionConfig?.eventSubscriptions) {
+      this.logger.log(
+        {
+          component: 'MessageQueueEventSubscriptionManager',
+          method: 'getEventSubscriptions',
+          source: 'injected configuration',
+          subscriptionsCount: this.subscriptionConfig.eventSubscriptions.length,
+          subscriptions: this.subscriptionConfig.eventSubscriptions.map(
+            (sub) => ({
+              streamPattern: sub.streamPattern,
+              purpose: sub.purpose,
+              description: sub.description,
+            }),
+          ),
+        },
+        'Using injected event subscriptions configuration',
+      );
       return this.subscriptionConfig.eventSubscriptions;
     }
 
     // Default subscriptions for backward compatibility
-    return [
+    const defaultSubscriptions = [
       {
         streamPattern: '$et-message-queue.created.v1',
         purpose: 'MessageCreatedEvent subscription - all aggregates',
         description: 'message-queue.created.v1 events',
       },
     ];
+
+    this.logger.log(
+      {
+        component: 'MessageQueueEventSubscriptionManager',
+        method: 'getEventSubscriptions',
+        source: 'default fallback',
+        subscriptionsCount: defaultSubscriptions.length,
+        subscriptions: defaultSubscriptions,
+      },
+      'Using default event subscriptions configuration (no injected config found)',
+    );
+
+    return defaultSubscriptions;
   }
 
   /**

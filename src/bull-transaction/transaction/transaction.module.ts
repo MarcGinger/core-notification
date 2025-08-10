@@ -12,8 +12,9 @@ import { Module } from '@nestjs/common';
 import { EventStoreSharedModule } from 'src/shared/infrastructure';
 import { BullMQModule } from 'src/shared/infrastructure/bullmq';
 import { LoggerModule } from 'src/shared/logger';
-import { GenericMessageQueueModule } from 'src/shared/message-queue';
+// import { GenericMessageQueueModule } from 'src/shared/message-queue';
 import { SharedModule } from 'src/shared/shared.module';
+import { GenericMessageQueueModule } from '../../shared/message-queue';
 import { TransactionCommands } from './application/commands';
 import { TransactionApplicationService } from './application/services';
 import { TransactionUseCases } from './application/usecases';
@@ -21,6 +22,10 @@ import { TransactionExceptionMessage } from './domain/exceptions';
 import { TransactionDomainService } from './domain/services';
 import { createTransactionEventSubscriptionConfig } from './infrastructure/config/transaction-event-subscription.config';
 import { TransactionController } from './infrastructure/controllers';
+import {
+  TransactionEventHandler,
+  TransactionEventSubscriptionManager,
+} from './infrastructure/event-handlers';
 import { TransactionMessageRoutingStrategy } from './infrastructure/message-routing';
 import { TransactionEventProcessor } from './infrastructure/processors';
 import {
@@ -64,6 +69,12 @@ import { TransactionRepository } from './infrastructure/repositories';
 
     // Event processor for handling domain events
     TransactionEventProcessor,
+
+    // Transaction event handler for business logic
+    TransactionEventHandler,
+
+    // Transaction event subscription manager for coordinating business logic and notifications
+    TransactionEventSubscriptionManager,
   ],
   exports: [
     TransactionRepository,

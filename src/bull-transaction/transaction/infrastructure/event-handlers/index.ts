@@ -8,4 +8,5 @@
  * Confidential and proprietary.
  */
 
+export { TransactionEventHandler } from './transaction-event.handler';
 export { TransactionEventSubscriptionManager } from './transaction-event.manager';

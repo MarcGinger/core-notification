@@ -21,7 +21,8 @@ import {
 } from 'src/shared/infrastructure/event-store';
 import { ILogger } from 'src/shared/logger';
 import { UpdateMessageQueueProps } from 'src/shared/message-queue/domain/properties';
-import { MessageQueueEventHandler } from 'src/shared/message-queue/infrastructure/event-handlers/message-queue-event.handler';
+import { MessageQueueEventHandler } from 'src/shared/message-queue/infrastructure/event-handlers';
+import { TransactionEventHandler } from './transaction-event.handler';
 
 /**
  * Transaction Event Subscription Manager responsible for setting up and managing
@@ -44,6 +45,7 @@ export class TransactionEventSubscriptionManager
     @Inject('ILogger') private readonly logger: ILogger,
     private readonly eventOrchestration: EventOrchestrationService,
     private readonly messageQueueEventHandler: MessageQueueEventHandler,
+    private readonly transactionEventHandler: TransactionEventHandler,
   ) {}
 
   /**
@@ -215,7 +217,39 @@ export class TransactionEventSubscriptionManager
         priority: 2, // High priority for transaction events
       };
 
-      // Route to message queue handler
+      // FIRST: Execute business logic through TransactionEventHandler
+      this.logger.log(
+        {
+          service: 'bull-transaction',
+          boundedContext: 'bullTransaction',
+          component: 'TransactionEventSubscriptionManager',
+          method: 'processTransactionEvent',
+          eventType: meta.eventType,
+          transactionId,
+          phase: 'BUSINESS_LOGIC',
+        },
+        'Executing transaction business logic before message queue routing',
+      );
+
+      await this.transactionEventHandler.handleTransactionEvent(
+        messageQueueProps,
+        meta,
+      );
+
+      // SECOND: Route to message queue handler for notifications
+      this.logger.log(
+        {
+          service: 'bull-transaction',
+          boundedContext: 'bullTransaction',
+          component: 'TransactionEventSubscriptionManager',
+          method: 'processTransactionEvent',
+          eventType: meta.eventType,
+          transactionId,
+          phase: 'NOTIFICATION_ROUTING',
+        },
+        'Routing to message queue for notifications after business logic',
+      );
+
       await this.messageQueueEventHandler.handleMessageQueueEvent(
         messageQueueProps,
         meta,
