@@ -9,6 +9,7 @@
  */
 
 import { MessageQueueEventSubscriptionConfig } from 'src/shared/message-queue';
+import { QueueRoute } from '../../../../shared/message-queue/types';
 import { TransactionMessageRoutingStrategy } from '../message-routing';
 
 /**
@@ -16,6 +17,28 @@ import { TransactionMessageRoutingStrategy } from '../message-routing';
  */
 export const createTransactionEventSubscriptionConfig =
   (): MessageQueueEventSubscriptionConfig => {
+    const routeMap: Record<string, QueueRoute> = {
+      // Notification routes
+      'notification.send': {
+        queueName: 'notifications',
+        options: { attempts: 3, priority: 5 },
+      },
+
+      // Transaction routes
+      'transaction.settle': {
+        queueName: 'transactions',
+        options: { attempts: 5, priority: 10 },
+      },
+      'transaction.refund': {
+        queueName: 'transactions',
+        options: { attempts: 3, priority: 8 },
+      },
+      'transaction.validate': {
+        queueName: 'transactions',
+        options: { attempts: 2, priority: 7 },
+      },
+    };
+
     return {
       eventSubscriptions: [
         {
@@ -49,5 +72,9 @@ export const createTransactionEventSubscriptionConfig =
         },
       ],
       customStrategies: [TransactionMessageRoutingStrategy],
+      // message queue adapter
+      messageQueueAdapter: 'TransactionMessageAdapter',
+      // routeMap
+      routeMap,
     };
   };
