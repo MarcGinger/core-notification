@@ -1,15 +1,20 @@
+import { InjectQueue } from '@nestjs/bullmq';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { Queue } from 'bullmq';
 import { handleCommandError } from 'src/shared/application/commands';
 import { IUserToken } from 'src/shared/auth';
-import { CoreSlackWorkerLoggingHelper } from '../../../../core-slack-worker/shared/domain/value-objects';
+import {
+  QUEUE_NAMES,
+  QUEUE_PRIORITIES,
+} from 'src/shared/infrastructure/bullmq';
+import { BullTransactionLoggingHelper } from '../../../shared/domain/value-objects';
 import { TransactionExceptionMessage } from '../../domain/exceptions';
-import { UpdateTransactionFactory } from '../../domain/factories';
 import { UpdateTransactionProps } from '../../domain/properties';
 import { TransactionRepository } from '../../infrastructure/repositories';
 
 /**
- * Use case for queuing Slack messages for delivery.
- * Handles the creation of message entities and BullMQ job scheduling.
+ * Use case for queuing transactions for processing.
+ * Handles updating transaction status to QUEUED and creating BullMQ job.
  *
  * This implementation showcases:
  * - Proper separation of concerns between application and infrastructure layers
@@ -21,129 +26,140 @@ import { TransactionRepository } from '../../infrastructure/repositories';
 export class QueueTransactionUseCase {
   private readonly logger = new Logger(QueueTransactionUseCase.name);
 
-  constructor(private readonly messageRepository: TransactionRepository) {}
+  constructor(
+    private readonly transactionRepository: TransactionRepository,
+    @InjectQueue(QUEUE_NAMES.DATA_PROCESSING)
+    private readonly dataProcessingQueue: Queue,
+  ) {}
 
   /**
-   * Queues a Slack message for delivery using domain-driven approach
+   * Validates input parameters for queue operation
+   */
+  private validateInput(user: IUserToken, props: UpdateTransactionProps): void {
+    if (!user) {
+      throw new BadRequestException('User token is required');
+    }
+    if (!props?.id) {
+      throw new BadRequestException('Transaction ID is required');
+    }
+  }
+
+  /**
+   * Queues a transaction for processing using domain-driven approach
    * @param user - The user performing the operation
-   * @param props - The message properties
-   * @returns Promise<{ messageId: string; jobId: string }> - The created message and job IDs
+   * @param props - The transaction update properties (must include existing transaction ID)
+   * @returns Promise<{ transactionId: string; jobId: string }> - The updated transaction and job IDs
    * @throws TransactionExceptionMessage - When queueing fails
    */
   async execute(
     user: IUserToken,
     props: UpdateTransactionProps,
-  ): Promise<{ messageId: string; jobId: string }> {
+  ): Promise<{ transactionId: string; jobId: string }> {
     // Input validation first
     this.validateInput(user, props);
 
     // Enhanced logging context for queue operation start
     const operationContext =
-      CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
+      BullTransactionLoggingHelper.createEnhancedLogContext(
         'QueueTransactionUseCase',
         'execute',
         props.id,
         user,
         {
           operation: 'QUEUE',
-          entityType: 'slack-message',
+          entityType: 'transaction',
           phase: 'START',
           hasUser: !!user,
           hasProps: !!props,
           propsFields: props ? Object.keys(props).length : 0,
-          isScheduled: !!props?.scheduledAt,
         },
       );
 
     this.logger.log(
       operationContext,
-      `Starting Slack message queueing: correlationId '${props.id}'`,
+      `Starting transaction queueing: transactionId '${props.id}'`,
     );
 
     try {
-      // Create message aggregate through domain service
-      const messageAggregate = UpdateTransactionFactory.fromProps(
-        props,
+      // Load existing transaction from EventStore using the proper repository method
+      const existingTransaction = await this.transactionRepository.getById(
+        user,
         props.id,
       );
 
-      // Queue delivery job with appropriate priority and scheduling
-      // const jobOptions = {
-      //   priority: QUEUE_PRIORITIES.HIGH,
-      //   delay: messageAggregate.scheduledAt
-      //     ? Math.max(0, messageAggregate.scheduledAt.getDelayInMs())
-      //     : 0,
-      //   attempts: 4,
-      //   backoff: {
-      //     type: 'exponential' as const,
-      //     delay: 2000,
-      //   },
-      //   removeOnComplete: 100,
-      //   removeOnFail: 50,
-      // };
+      if (!existingTransaction) {
+        throw new BadRequestException(
+          `Transaction with ID ${props.id} not found`,
+        );
+      }
 
-      // const job = await this.slackQueue.add(
-      //   'deliver-slack-message',
-      //   {
-      //     messageId: messageAggregate.getId(),
-      //     tenant: user.tenant,
-      //   },
-      //   jobOptions,
-      // );
+      // Create BullMQ job for transaction processing
+      const jobOptions = {
+        priority: QUEUE_PRIORITIES.HIGH,
+        delay: 0, // Process immediately
+        attempts: 3,
+        backoff: {
+          type: 'exponential' as const,
+          delay: 2000,
+        },
+        removeOnComplete: 100,
+        removeOnFail: 50,
+      };
 
-      // Mark the message as queued and emit domain event
-      messageAggregate.markAsQueued(user, props.id, 5);
-
-      // Save the aggregate with the new events
-      const savedTransaction = await this.messageRepository.saveTransaction(
-        user,
-        messageAggregate,
+      const job = await this.dataProcessingQueue.add(
+        'process-transaction',
+        {
+          transactionId: props.id,
+          tenant: user.tenant,
+          requestedBy: user.sub,
+          timestamp: new Date().toISOString(),
+        },
+        jobOptions,
       );
 
       // Success logging with enhanced context
       const successContext =
-        CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-          'QueueSlackTransactionUseCase',
+        BullTransactionLoggingHelper.createEnhancedLogContext(
+          'QueueTransactionUseCase',
           'execute',
           props.id,
           user,
           {
             operation: 'QUEUE',
-            entityType: 'slack-message',
+            entityType: 'transaction',
             phase: 'SUCCESS',
-            messageId: savedTransaction.id,
-            // jobId: job.id?.toString(),
-            scheduledDelay: 0,
-            // priority: jobOptions.priority,
-            // attempts: jobOptions.attempts,
+            transactionId: props.id,
+            jobId: job.id?.toString(),
+            priority: jobOptions.priority,
+            attempts: jobOptions.attempts,
             queuedAt: new Date().toISOString(),
           },
         );
 
       this.logger.log(
         successContext,
-        `Successfully queued Slack message: messageId '${savedTransaction.id}', tenant '${user.tenant}'', correlationId '${props.id}'`,
+        `Successfully added transaction to queue: transactionId '${props.id}', jobId '${job.id}', tenant '${user.tenant}'`,
       );
 
       return {
-        messageId: savedTransaction.id,
-        jobId: '',
+        transactionId: props.id,
+        jobId: job.id?.toString() || '',
       };
     } catch (error) {
       // Error logging with enhanced context
       const errorContext =
-        CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-          'QueueSlackTransactionUseCase',
+        BullTransactionLoggingHelper.createEnhancedLogContext(
+          'QueueTransactionUseCase',
           'execute',
           props.id,
           user,
           {
             operation: 'QUEUE',
-            entityType: 'slack-message',
+            entityType: 'transaction',
             phase: 'ERROR',
             errorType:
               error instanceof Error ? error.constructor.name : 'Unknown',
-            errorTransaction:
+            errorMessage:
               error instanceof Error ? error.message : 'Unknown error',
             stack: error instanceof Error ? error.stack : undefined,
             inputProps: props ? Object.keys(props) : [],
@@ -152,94 +168,12 @@ export class QueueTransactionUseCase {
 
       this.logger.error(
         errorContext,
-        `Failed to queue Slack message: correlationId '${props.id}'`,
+        `Failed to queue transaction: transactionId '${props.id}'`,
       );
 
       // Centralized error handling
-      handleCommandError(error, null, TransactionExceptionMessage.createError);
+      handleCommandError(error, null, TransactionExceptionMessage.queueError);
       throw error;
-    }
-  }
-
-  /**
-   * Validates input properties with enhanced logging
-   */
-  private validateInput(user: IUserToken, props: UpdateTransactionProps): void {
-    // User validation
-    if (!user) {
-      const errorContext =
-        CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-          'QueueTransactionUseCase',
-          'validateInput',
-          'unknown',
-          undefined,
-          {
-            operation: 'QUEUE',
-            entityType: 'slack-message',
-            validationError: 'missing_user',
-          },
-        );
-
-      this.logger.warn(
-        errorContext,
-        'Slack message queueing attempted without user authentication',
-      );
-
-      throw new BadRequestException(
-        'User authentication required for message queueing',
-      );
-    }
-
-    if (!props) {
-      const errorContext =
-        CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-          'QueueSlackTransactionUseCase',
-          'validateInput',
-          'unknown',
-          user,
-          {
-            operation: 'QUEUE',
-            entityType: 'slack-message',
-            validationError: 'missing_props',
-          },
-        );
-
-      this.logger.warn(
-        errorContext,
-        'Slack message queueing attempted without required properties',
-      );
-
-      throw new BadRequestException(
-        TransactionExceptionMessage.propsRequiredToCreateTransaction,
-      );
-    }
-
-    const validationErrors: string[] = [];
-
-    if (validationErrors.length > 0) {
-      const errorContext =
-        CoreSlackWorkerLoggingHelper.createEnhancedLogContext(
-          'QueueSlackTransactionUseCase',
-          'validateInput',
-          props.id || 'unknown',
-          user,
-          {
-            operation: 'QUEUE',
-            entityType: 'slack-message',
-            validationError: 'missing_required_fields',
-            missingFields: validationErrors,
-            providedFields: Object.keys(props),
-          },
-        );
-
-      this.logger.warn(
-        errorContext,
-        `Slack message queueing validation failed: missing fields [${validationErrors.join(', ')}]`,
-      );
-
-      throw new BadRequestException(
-        `Required fields missing for Slack message queueing: ${validationErrors.join(', ')}`,
-      );
     }
   }
 }

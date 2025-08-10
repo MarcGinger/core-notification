@@ -10,8 +10,10 @@
 
 import { Module } from '@nestjs/common';
 import { EventStoreSharedModule } from 'src/shared/infrastructure';
+import { BullMQModule } from 'src/shared/infrastructure/bullmq';
 import { LoggerModule } from 'src/shared/logger';
 import { GenericMessageQueueModule } from 'src/shared/message-queue';
+import { SharedModule } from 'src/shared/shared.module';
 import { TransactionCommands } from './application/commands';
 import { TransactionApplicationService } from './application/services';
 import { TransactionUseCases } from './application/usecases';
@@ -20,6 +22,7 @@ import { TransactionDomainService } from './domain/services';
 import { createTransactionEventSubscriptionConfig } from './infrastructure/config/transaction-event-subscription.config';
 import { TransactionController } from './infrastructure/controllers';
 import { TransactionMessageRoutingStrategy } from './infrastructure/message-routing';
+import { TransactionEventProcessor } from './infrastructure/processors';
 import {
   TransactionMemoryProjection,
   TransactionProjectionManager,
@@ -28,8 +31,10 @@ import { TransactionRepository } from './infrastructure/repositories';
 
 @Module({
   imports: [
+    SharedModule,
     EventStoreSharedModule,
     LoggerModule,
+    BullMQModule,
     GenericMessageQueueModule.registerAsync({
       useFactory: createTransactionEventSubscriptionConfig,
     }),
@@ -56,12 +61,16 @@ import { TransactionRepository } from './infrastructure/repositories';
 
     // Transaction-specific message routing strategy
     TransactionMessageRoutingStrategy,
+
+    // Event processor for handling domain events
+    TransactionEventProcessor,
   ],
   exports: [
     TransactionRepository,
     TransactionMemoryProjection,
     TransactionProjectionManager,
     'TransactionMemoryProjection',
+    TransactionEventProcessor,
   ],
 })
 export class TransactionModule {}

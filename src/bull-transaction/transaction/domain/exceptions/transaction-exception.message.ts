@@ -267,4 +267,12 @@ export const TransactionExceptionMessage: Record<string, IException> = {
     statusCode: 400,
     domain: `true`,
   },
+  queueError: {
+    message: `Invalid Transaction details for queueing an item`,
+    description: `The provided Transaction details are invalid or the transaction cannot be queued for processing`,
+    code: `INVALID_TRANSACTION_QUEUE_DETAILS`,
+    exception: `BadRequestException`,
+    statusCode: 400,
+    domain: `true`,
+  },
 };

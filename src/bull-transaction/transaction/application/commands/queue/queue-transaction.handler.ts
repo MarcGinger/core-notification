@@ -28,7 +28,7 @@ export class QueueTransactionHandler
     try {
       await this.queueTransactionUseCase.execute(user, props);
     } catch (error) {
-      handleCommandError(error, null, TransactionExceptionMessage.createError);
+      handleCommandError(error, null, TransactionExceptionMessage.queueError);
       throw error;
     }
   }
