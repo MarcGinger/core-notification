@@ -8,14 +8,36 @@
  * Confidential and proprietary.
  */
 
+/**
+ * DEPRECATED: Send Transaction Notification Command Handler
+ *
+ * ⚠️  WARNING: This command handler is deprecated in favor of domain-driven architecture
+ *
+ * MIGRATION:
+ * This functionality is now automatically handled by TransactionEventHandler
+ * which processes EventStore events and routes to notification queues directly.
+ *
+ * The new flow:
+ * 1. Transaction events are stored in EventStore
+ * 2. TransactionEventHandler receives events via subscription
+ * 3. Business logic is processed
+ * 4. Notification routing happens automatically
+ *
+ * @deprecated Remove usage of SendTransactionNotificationCommand - notifications are now automatic
+ */
+
 import { Inject, Injectable } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
 import { ILogger } from 'src/shared/logger';
+// @deprecated - Remove this import and use domain-specific handlers
 import { MessageQueueEventHandler } from 'src/shared/message-queue';
 import { ITransaction } from '../../../domain/entities';
 import { SendTransactionNotificationCommand } from './send-transaction-notification.command';
 
+/**
+ * @deprecated Use TransactionEventHandler instead - automatic notification routing
+ */
 @Injectable()
 @CommandHandler(SendTransactionNotificationCommand)
 export class SendTransactionNotificationHandler

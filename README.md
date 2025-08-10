@@ -50,6 +50,38 @@ This is a **NestJS-based microservice starter template** designed for building s
 
 ---
 
+## 🏗 Architecture Overview
+
+This project implements a **domain-driven architecture** where each domain is self-contained and handles its own event processing and queue routing. This approach promotes:
+
+### 🎯 Domain Autonomy
+- **Self-contained domains:** Each domain (Transaction, Slack, Email, Notification) manages its own event handlers
+- **Independent evolution:** Domains can be modified without affecting shared infrastructure
+- **Clear boundaries:** No cross-domain coupling in business logic
+
+### 🔄 Event-Driven Flow
+```
+EventStore Event → Domain Handler → Business Logic + Queue Routing
+     ↓                  ↓                    ↓
+Transaction Event → TransactionEventHandler → Process + Route to Notification Queue
+Slack Event → SlackEventHandler → Process + Route to Slack Queue  
+Email Event → EmailEventHandler → Process + Route to Email Queue
+```
+
+### 🛡 Type Safety
+- **Domain-specific job types:** Each domain defines its own `JobPayloadMap` (e.g., `TransactionJobPayloadMap`)
+- **Strong typing:** No generic `any` types for job payloads
+- **Compile-time validation:** Catch routing errors at build time
+
+### ✅ Migration Status
+- **✅ Transaction Domain:** Fully migrated to domain-driven approach
+- **🚧 Other Domains:** Legacy central infrastructure marked as deprecated
+- **📋 Migration Guide:** See `docs/CENTRAL_INFRASTRUCTURE_DEPRECATION.md` for detailed migration instructions
+
+> **Architectural Philosophy:** Each domain owns its data, events, and routing logic, eliminating central bottlenecks and promoting team autonomy.
+
+---
+
 > Designed to scale with your team and evolve with your architecture.
 
 ## Project Generation Guide

@@ -31,14 +31,24 @@ import { MessageQueueWorkerLoggingHelper } from '../../domain/value-objects';
 import { MessageQueueEventHandler } from './message-queue-event.handler';
 
 /**
- * Message projection manager responsible for setting up and managing
- * the message projection from EventStore streams.
+ * DEPRECATED: Message Queue Event Subscription Manager
  *
- * This service handles:
- * - Initial catchup from historical events
- * - Live subscription for new events
- * - Error handling and retry logic
- * - Projection lifecycle management
+ * ⚠️  WARNING: This central subscription manager is deprecated in favor of domain-driven architecture
+ *
+ * MIGRATION PATH:
+ * - Each domain should manage its own EventStore subscriptions directly
+ * - Domains should handle their own event processing and queue routing
+ * - Remove dependencies on this central subscription manager
+ *
+ * This manager violates domain separation by:
+ * - Centrally managing subscriptions that should be domain-owned
+ * - Routing all events through a single central handler
+ * - Creating coupling between domains through shared infrastructure
+ *
+ * @deprecated Use domain-specific event subscription managers instead
+ */
+/**
+ * @deprecated Use domain-specific event subscription managers instead
  */
 @Injectable()
 export class MessageQueueEventSubscriptionManager

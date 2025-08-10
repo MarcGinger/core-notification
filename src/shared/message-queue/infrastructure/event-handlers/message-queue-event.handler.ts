@@ -1,7 +1,19 @@
 /**
- * GENERIC MESSAGE QUEUE EVENT HANDLER
- * Routes events to appropriate queues based on dynamically registered strategies
- * EventStore subscriptions already provide exactly-once delivery guarantees
+ * DEPRECATED: GENERIC MESSAGE QUEUE EVENT HANDLER
+ *
+ * ⚠️  WARNING: This central handler is deprecated in favor of domain-driven architecture
+ *
+ * MIGRATION PATH:
+ * - Each domain should handle its own events directly (like TransactionEventHandler)
+ * - Domains should inject their own queues and handle routing logic
+ * - Remove dependencies on this central handler from your domain modules
+ *
+ * This handler violates domain separation by having hardcoded knowledge of:
+ * - Multiple domain-specific queues (SLACK_MESSAGE, EMAIL, NOTIFICATION, DATA_PROCESSING)
+ * - Domain-specific routing logic
+ * - Cross-domain concerns that should be domain-owned
+ *
+ * @deprecated Use domain-specific event handlers instead (e.g., TransactionEventHandler)
  */
 
 import { InjectQueue } from '@nestjs/bullmq';
@@ -44,7 +56,7 @@ export interface StandardJobOptions {
 }
 
 /**
- * Generic Message Queue Event Handler
+ * @deprecated Generic Message Queue Event Handler - Use domain-specific handlers instead
  * Routes events to appropriate queues using dynamically registered strategies
  */
 @Injectable()
