@@ -19,15 +19,13 @@ export { MessageQueueEventHandler } from './infrastructure/event-handlers/messag
 
 // Strategy exports
 export {
-  DataProcessingStrategy,
-  EmailMessageStrategy,
+  DefaultDataProcessingStrategy,
   IMessageRoutingStrategy,
-  NotificationStrategy,
-  SlackMessageStrategy,
   StandardJobOptions,
-  TransactionNotificationJobData,
-  TransactionNotificationStrategy,
 } from './infrastructure/event-handlers/message-queue-event.handler';
+
+// Job data type exports
+export * from './infrastructure/job-data';
 
 // Domain exports
 export { UpdateMessageQueueProps } from './domain/properties/update-message-queue.model';

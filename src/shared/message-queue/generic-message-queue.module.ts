@@ -17,13 +17,9 @@ import {
   MessageQueueEventSubscriptionConfig,
 } from './domain/interfaces';
 import {
-  DataProcessingStrategy,
-  EmailMessageStrategy,
+  DefaultDataProcessingStrategy,
   MessageQueueEventHandler,
   MessageQueueEventSubscriptionManager,
-  NotificationStrategy,
-  SlackMessageStrategy,
-  TransactionNotificationStrategy,
 } from './infrastructure/event-handlers';
 
 /**
@@ -37,12 +33,8 @@ import {
     EventStoreSharedModule, // Provides EventStore integration
   ],
   providers: [
-    // Routing strategies
-    SlackMessageStrategy,
-    EmailMessageStrategy,
-    NotificationStrategy,
-    TransactionNotificationStrategy,
-    DataProcessingStrategy,
+    // Default fallback strategy
+    DefaultDataProcessingStrategy,
 
     // Main event handler that uses strategies
     MessageQueueEventHandler,
@@ -54,11 +46,7 @@ import {
     // Export for use in other modules
     MessageQueueEventHandler,
     MessageQueueEventSubscriptionManager,
-    SlackMessageStrategy,
-    EmailMessageStrategy,
-    NotificationStrategy,
-    TransactionNotificationStrategy,
-    DataProcessingStrategy,
+    DefaultDataProcessingStrategy,
   ],
 })
 export class GenericMessageQueueModule {
@@ -86,21 +74,8 @@ export class GenericMessageQueueModule {
           inject: options.inject || [],
         },
 
-        // Dynamic custom strategies provider
-        {
-          provide: 'CUSTOM_STRATEGIES',
-          useFactory: (config: MessageQueueEventSubscriptionConfig) => {
-            return config.customStrategies || [];
-          },
-          inject: [MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG],
-        },
-
-        // Base routing strategies
-        SlackMessageStrategy,
-        EmailMessageStrategy,
-        NotificationStrategy,
-        TransactionNotificationStrategy,
-        DataProcessingStrategy,
+        // Default fallback strategy
+        DefaultDataProcessingStrategy,
 
         // Main event handler that uses strategies
         MessageQueueEventHandler,
@@ -112,11 +87,7 @@ export class GenericMessageQueueModule {
         // Export for use in other modules
         MessageQueueEventHandler,
         MessageQueueEventSubscriptionManager,
-        SlackMessageStrategy,
-        EmailMessageStrategy,
-        NotificationStrategy,
-        TransactionNotificationStrategy,
-        DataProcessingStrategy,
+        DefaultDataProcessingStrategy,
       ],
     };
   }
