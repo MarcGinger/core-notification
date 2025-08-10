@@ -112,7 +112,6 @@ export class DefaultDataProcessingStrategy
  */
 @Injectable()
 export class MessageQueueEventHandler {
-  private readonly systemUser: IUserToken;
   private readonly routingStrategies: IMessageRoutingStrategy[];
 
   constructor(
@@ -130,15 +129,6 @@ export class MessageQueueEventHandler {
     @Inject('CUSTOM_MESSAGE_ROUTING_STRATEGIES')
     private readonly customStrategies?: IMessageRoutingStrategy[],
   ) {
-    this.systemUser = {
-      sub: 'message-queue-event-handler',
-      preferred_username: 'system',
-      name: 'System MessageQueue Event Handler',
-      email: 'system@internal',
-      tenant: 'system',
-      roles: ['system'],
-    } as IUserToken;
-
     // Initialize routing strategies: custom strategies first, then fallback
     this.routingStrategies = [
       ...(this.customStrategies || []),
