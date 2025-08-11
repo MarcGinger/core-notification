@@ -15,6 +15,7 @@ import { LoggerModule } from 'src/shared/logger';
 // import { GenericMessageQueueModule } from 'src/shared/message-queue';
 import { SharedModule } from 'src/shared/shared.module';
 import { GenericMessageQueueModule } from '../../shared/message-queue';
+import { GenericMessageQueueInfraModule } from '../../shared/message-queue/generic-message-queue-infra.module';
 import { TransactionCommands } from './application/commands';
 import { TransactionApplicationService } from './application/services';
 import { TransactionUseCases } from './application/usecases';
@@ -48,6 +49,7 @@ import { TransactionMessageQueueService } from './infrastructure/services/transa
     GenericMessageQueueModule.registerAsync({
       useFactory: createTransactionEventSubscriptionConfig,
     }),
+    GenericMessageQueueInfraModule, // Import the new infrastructure module
   ],
   controllers: [TransactionController],
   providers: [
@@ -60,6 +62,10 @@ import { TransactionMessageQueueService } from './infrastructure/services/transa
 
     // Job dispatchers
     TransactionJobDispatcher,
+    {
+      provide: 'ITransactionJobDispatcher',
+      useExisting: TransactionJobDispatcher,
+    },
 
     // Message queue service
     TransactionMessageQueueService,

@@ -8,30 +8,38 @@
  * Confidential and proprietary.
  */
 
-import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { Injectable, Inject } from '@nestjs/common';
+import { IGenericQueue } from '../../domain/interfaces/generic-queue.interface';
 import { JobOptions, QueueMeta } from '../../types';
 
 /**
  * Generic Message Queue Service
- * Provides type-safe job enqueuing to any queue
+ * Provides type-safe job enqueuing to any queue implementation
+ * Now technology-agnostic - supports BullMQ, RabbitMQ, etc.
  */
 @Injectable()
 export class GenericMessageQueueService {
-  private queues: Map<string, Queue> = new Map();
+  private queues: Map<string, IGenericQueue> = new Map();
 
   constructor(
-    @InjectQueue('default') private defaultQueue: Queue,
-    @InjectQueue('transactions') private transactionsQueue: Queue,
-    @InjectQueue('notifications') private notificationsQueue: Queue,
-    @InjectQueue('slack-messages') private slackQueue: Queue,
+    @Inject('QUEUE_REGISTRY')
+    private readonly queueRegistry: Map<string, IGenericQueue>,
   ) {
-    // Register all available queues
-    this.queues.set('default', this.defaultQueue);
-    this.queues.set('transactions', this.transactionsQueue);
-    this.queues.set('notifications', this.notificationsQueue);
-    this.queues.set('slack-messages', this.slackQueue);
+    this.queues = queueRegistry;
+  }
+
+  /**
+   * Get a queue by name with fallback to default
+   */
+  private getQueue(queueName: string): IGenericQueue {
+    const queue = this.queues.get(queueName);
+    if (!queue) {
+      // TODO: Remove this temporary fallback once queue registry is properly implemented
+      throw new Error(
+        `Queue '${queueName}' not found in registry. Queue registry is not yet fully implemented.`,
+      );
+    }
+    return queue;
   }
 
   /**
@@ -44,7 +52,7 @@ export class GenericMessageQueueService {
     options?: JobOptions & { jobId?: string },
     meta?: QueueMeta,
   ): Promise<void> {
-    const queue = this.queues.get(queueName) || this.defaultQueue;
+    const queue = this.getQueue(queueName);
 
     const jobData = {
       type: jobType,
@@ -59,10 +67,6 @@ export class GenericMessageQueueService {
       removeOnComplete: options?.removeOnComplete || 100,
       removeOnFail: options?.removeOnFail || 50,
       jobId: options?.jobId || jobData.meta.correlationId,
-      backoff: options?.backoff || {
-        type: 'exponential',
-        delay: 2000,
-      },
     });
   }
 

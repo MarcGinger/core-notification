@@ -12,14 +12,20 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { QUEUE_NAMES } from 'src/shared/infrastructure/bullmq';
-import { TransactionJobData } from '../processors/transaction.processor';
+import {
+  ITransactionJobDispatcher,
+  TransactionJobData,
+} from '../../domain/services/transaction-job-dispatcher.interface';
 
 /**
  * Service for dispatching transaction processing jobs to BullMQ workers
- * This demonstrates how to enqueue jobs that will be processed by TransactionProcessor
+ * Infrastructure implementation of the transaction job dispatcher
+ *
+ * This service implements the domain interface using BullMQ as the underlying
+ * queue technology. The domain logic remains unaware of BullMQ specifics.
  */
 @Injectable()
-export class TransactionJobDispatcher {
+export class TransactionJobDispatcher implements ITransactionJobDispatcher {
   constructor(
     @InjectQueue(QUEUE_NAMES.DATA_PROCESSING)
     private readonly dataProcessingQueue: Queue,

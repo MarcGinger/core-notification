@@ -18,25 +18,7 @@ import {
   ProcessTransactionResult,
   TransactionApplicationService,
 } from '../../application/services';
-
-/**
- * Job data interface for Transaction processing
- */
-export interface TransactionJobData {
-  transactionId: string;
-  operationType: 'withdrawal' | 'deposit' | 'transfer';
-  amount: number;
-  currency: string;
-  fromAccount?: string;
-  toAccount?: string;
-  description?: string;
-  metadata?: Record<string, any>;
-  tenant: string;
-  correlationId?: string;
-  isRetry?: boolean;
-  retryAttempt?: number;
-  priority?: 'low' | 'normal' | 'high';
-}
+import { TransactionJobData } from '../../domain/services/transaction-job-dispatcher.interface';
 
 /**
  * BullMQ processor for handling Transaction processing jobs

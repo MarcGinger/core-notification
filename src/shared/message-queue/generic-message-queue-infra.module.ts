@@ -19,6 +19,9 @@ import { GenericMessageQueueCommands } from './application/commands/generic';
 // Infrastructure services
 import { GenericMessageQueueService } from './infrastructure/services';
 
+// Infrastructure providers
+import { QueueRegistryProvider } from './infrastructure/providers';
+
 /**
  * Generic Message Queue Infrastructure Module
  * Provides type-safe job enqueuing/scheduling across all domains
@@ -38,6 +41,9 @@ import { GenericMessageQueueService } from './infrastructure/services';
     LoggerModule, // Provides logging
   ],
   providers: [
+    // Queue registry
+    QueueRegistryProvider,
+    
     // Core queue services
     GenericMessageQueueService,
 
@@ -63,6 +69,7 @@ export class GenericMessageQueueInfraModule {
       module: GenericMessageQueueInfraModule,
       imports: [CqrsModule, BullMQModule, LoggerModule],
       providers: [
+        QueueRegistryProvider,
         GenericMessageQueueService,
         ...GenericMessageQueueCommands,
         ...(options?.customRoutingStrategy

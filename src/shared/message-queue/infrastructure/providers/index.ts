@@ -8,6 +8,4 @@
  * Confidential and proprietary.
  */
 
-export { SimpleBullMQAdapter } from './simple-bullmq.adapter';
-
-export * from './adapter.interface';
+export { QueueRegistryProvider } from './queue-registry.provider';
