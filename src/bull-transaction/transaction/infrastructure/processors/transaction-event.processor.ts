@@ -14,12 +14,11 @@ export interface TransactionEventData {
   eventVersion: number;
   eventData: any;
   metadata?: {
-    tenant: string;
-    requestedBy: string;
     timestamp: string;
     correlationId?: string;
     causationId?: string;
   };
+  user: IUserToken;
 }
 
 /**
@@ -50,7 +49,7 @@ export class TransactionEventProcessor {
   async processTransactionCreated(
     eventData: TransactionEventData,
   ): Promise<void> {
-    const { transactionId, metadata } = eventData;
+    const { transactionId, metadata, user } = eventData;
 
     if (!metadata) {
       throw new Error('Missing metadata for transaction created event');
@@ -60,13 +59,14 @@ export class TransactionEventProcessor {
       'TransactionEventProcessor',
       'processTransactionCreated',
       transactionId,
-      { tenant: metadata.tenant, sub: metadata.requestedBy } as IUserToken,
+      user,
       {
         operation: 'PROCESS_EVENT',
         entityType: 'transaction',
         phase: 'START',
-        eventType: eventData.eventType,
-        eventVersion: eventData.eventVersion,
+        eventData,
+        // eventType: eventData.eventType,
+        // eventVersion: eventData.eventVersion,
         timestamp: metadata.timestamp,
       },
     );
@@ -77,13 +77,6 @@ export class TransactionEventProcessor {
     );
 
     try {
-      // Create user context from event metadata
-      const user: IUserToken = {
-        sub: metadata.requestedBy,
-        tenant: metadata.tenant,
-        // Add other required properties as needed
-      } as IUserToken;
-
       // Load the transaction from EventStore
       const transaction = await this.transactionRepository.getById(
         user,
@@ -200,22 +193,5 @@ export class TransactionEventProcessor {
     // TODO: Implement business logic for transaction queued
     // This might include status updates, monitoring setup, etc.
     return Promise.resolve();
-  }
-
-  /**
-   * Create user context from event metadata
-   */
-  private createUserContext(
-    metadata?: TransactionEventData['metadata'],
-  ): IUserToken {
-    if (!metadata) {
-      throw new Error('Missing metadata for user context');
-    }
-
-    return {
-      sub: metadata.requestedBy,
-      tenant: metadata.tenant,
-      // Add other required properties based on your IUserToken interface
-    } as IUserToken;
   }
 }

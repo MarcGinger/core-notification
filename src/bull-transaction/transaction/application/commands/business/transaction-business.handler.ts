@@ -34,10 +34,11 @@ export class InitiateTransferHandler
   ) {}
 
   async execute(command: InitiateTransferCommand): Promise<void> {
-    const { fromAccount, toAccount, amount, currency, correlationId } = command;
+    const { fromAccount, toAccount, amount, currency, user, correlationId } =
+      command;
 
     this.logger.log(
-      `Initiating transfer: ${amount} ${currency} from ${fromAccount} to ${toAccount}`,
+      `Initiating transfer: ${amount} ${currency} from ${fromAccount} to ${toAccount}, user: ${user.sub}`,
     );
 
     // Domain validation logic here
@@ -49,7 +50,7 @@ export class InitiateTransferHandler
       throw new Error('Cannot transfer to the same account');
     }
 
-    // Enqueue the settlement job using domain interface
+    // Enqueue the settlement job using domain interface with user context
     await this.messageQueue.enqueueSettlement(
       {
         txId: correlationId,
@@ -58,6 +59,7 @@ export class InitiateTransferHandler
         fromAccount,
         toAccount,
       },
+      user,
       correlationId,
     );
 
@@ -77,10 +79,10 @@ export class RefundPaymentHandler
   ) {}
 
   async execute(command: RefundPaymentCommand): Promise<void> {
-    const { transactionId, reason, amount, correlationId } = command;
+    const { transactionId, reason, amount, user, correlationId } = command;
 
     this.logger.log(
-      `Processing refund for transaction ${transactionId}: ${reason}`,
+      `Processing refund for transaction ${transactionId}: ${reason}, user: ${user.sub}`,
     );
 
     // Domain validation
@@ -88,13 +90,14 @@ export class RefundPaymentHandler
       throw new Error('Transaction ID is required for refund');
     }
 
-    // Enqueue refund job using domain interface
+    // Enqueue refund job using domain interface with user context
     await this.messageQueue.enqueueRefund(
       {
         txId: transactionId,
         reason,
         amount,
       },
+      user,
       correlationId,
     );
 
@@ -114,10 +117,10 @@ export class ValidateTransactionHandler
   ) {}
 
   async execute(command: ValidateTransactionCommand): Promise<void> {
-    const { transactionId, rules, correlationId } = command;
+    const { transactionId, rules, user, correlationId } = command;
 
     this.logger.log(
-      `Validating transaction ${transactionId} against ${rules.length} rules`,
+      `Validating transaction ${transactionId} against ${rules.length} rules, user: ${user.sub}`,
     );
 
     // Domain validation
@@ -125,12 +128,13 @@ export class ValidateTransactionHandler
       throw new Error('At least one validation rule is required');
     }
 
-    // Enqueue validation job using domain interface
+    // Enqueue validation job using domain interface with user context
     await this.messageQueue.enqueueValidation(
       {
         txId: transactionId,
         rules,
       },
+      user,
       correlationId,
     );
 

@@ -8,6 +8,29 @@
  * Confidential and proprietary.
  */
 
+import { IUserToken } from '../../../../shared/auth/user-token.interface';
+
+/**
+ * System User for system-initiated jobs (cron, background tasks, etc.)
+ */
+export interface SystemUser {
+  sub: 'system';
+  tenant: string;
+  roles: ['system'];
+  displayName: 'System';
+}
+
+/**
+ * Standard job metadata following COPILOT_INSTRUCTIONS.md specifications
+ */
+export interface StandardJobMetadata {
+  correlationId: string; // Required for tracing
+  user: IUserToken | SystemUser; // User context (supports system jobs)
+  source: string; // Originating service
+  timestamp: Date; // Job creation time
+  businessContext?: any; // Domain-specific data
+}
+
 /**
  * Transaction Settlement Data
  * Data structure for settlement operations
@@ -45,35 +68,42 @@ export interface TransactionValidationData {
  *
  * This interface provides a clean separation between domain logic and infrastructure.
  * Business handlers depend only on this interface, not on specific queue implementations.
+ * Follows COPILOT_INSTRUCTIONS.md metadata standards with user context.
  */
 export interface ITransactionMessageQueue {
   /**
    * Enqueue a transaction settlement job
    * @param data Settlement data
+   * @param user User context for the operation
    * @param correlationId Optional correlation ID for tracking
    */
   enqueueSettlement(
     data: TransactionSettlementData,
+    user: IUserToken | SystemUser,
     correlationId?: string,
   ): Promise<void>;
 
   /**
    * Enqueue a transaction refund job
    * @param data Refund data
+   * @param user User context for the operation
    * @param correlationId Optional correlation ID for tracking
    */
   enqueueRefund(
     data: TransactionRefundData,
+    user: IUserToken | SystemUser,
     correlationId?: string,
   ): Promise<void>;
 
   /**
    * Enqueue a transaction validation job
    * @param data Validation data
+   * @param user User context for the operation
    * @param correlationId Optional correlation ID for tracking
    */
   enqueueValidation(
     data: TransactionValidationData,
+    user: IUserToken | SystemUser,
     correlationId?: string,
   ): Promise<void>;
 }

@@ -9,7 +9,6 @@
  */
 
 import { Module } from '@nestjs/common';
-import { BullMQModule } from '../infrastructure/bullmq';
 import { EventStoreSharedModule } from '../infrastructure/event-store';
 import { LoggerModule } from '../logger';
 import { QUEUE_NAMES } from './domain/constants/queue-names.constants';
@@ -27,7 +26,6 @@ import { QUEUE_TOKENS } from './infrastructure/tokens/queue.tokens';
  */
 @Module({
   imports: [
-    BullMQModule, // Provides queue access
     LoggerModule, // Provides logging
     EventStoreSharedModule, // Provides EventStore integration
   ],
@@ -47,7 +45,6 @@ import { QUEUE_TOKENS } from './infrastructure/tokens/queue.tokens';
   exports: [
     QUEUE_TOKENS.QUEUE_REGISTRY, // Export queue registry for domains
     QUEUE_TOKENS.GENERIC_QUEUE, // Export default queue
-    BullMQModule, // Export BullMQ for domain modules
     LoggerModule, // Export logging for domain modules
     EventStoreSharedModule, // Export EventStore for domain modules
   ],

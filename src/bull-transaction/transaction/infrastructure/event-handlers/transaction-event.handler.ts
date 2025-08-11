@@ -69,11 +69,17 @@ export class TransactionEventHandler {
         eventVersion: 1,
         eventData: eventData.payload,
         metadata: {
-          tenant: 'system', // Default tenant for now
-          requestedBy: 'event-handler',
           timestamp: new Date().toISOString(),
           correlationId: eventData.correlationId,
           ...eventData.payload,
+        },
+        user: {
+          name: meta.username,
+          sub: meta.userId,
+          email: meta.username,
+          tenant: meta.tenant,
+          tenant_id: meta.tenantId,
+          // Add other user properties as needed
         },
       };
 

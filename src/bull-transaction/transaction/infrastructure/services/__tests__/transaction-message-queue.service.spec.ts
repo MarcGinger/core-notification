@@ -9,6 +9,7 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import { IUserToken } from '../../../../../shared/auth/user-token.interface';
 import {
   IGenericQueue,
   PRIORITY_LEVELS,
@@ -20,6 +21,14 @@ describe('TransactionMessageQueueService', () => {
   let service: TransactionMessageQueueService;
   let mockQueue: jest.Mocked<IGenericQueue>;
   let mockQueueRegistry: Map<string, IGenericQueue>;
+
+  // Helper mock user for tests
+  const mockUser: IUserToken = {
+    sub: 'test-user-123',
+    name: 'Test User',
+    email: 'test@example.com',
+    tenant: 'test-tenant',
+  };
 
   beforeEach(async () => {
     // Create mock queue
@@ -64,7 +73,7 @@ describe('TransactionMessageQueueService', () => {
   });
 
   describe('enqueueSettlement', () => {
-    it('should enqueue settlement job with correct parameters', async () => {
+    it('should enqueue settlement job with correct parameters and user context', async () => {
       const settlementData = {
         txId: 'test-tx-123',
         amount: 1000,
@@ -73,11 +82,30 @@ describe('TransactionMessageQueueService', () => {
         toAccount: 'acc-2',
       };
 
-      await service.enqueueSettlement(settlementData, 'corr-123');
+      const mockUser = {
+        sub: 'user-123',
+        name: 'Test User',
+        email: 'test@example.com',
+        tenant: 'test-tenant',
+      };
+
+      await service.enqueueSettlement(settlementData, mockUser, 'corr-123');
 
       expect(mockQueue.add).toHaveBeenCalledWith(
         'transaction.settlement.v1',
-        settlementData,
+        expect.objectContaining({
+          ...settlementData,
+          metadata: expect.objectContaining({
+            correlationId: 'corr-123',
+            user: mockUser,
+            source: 'transaction-service',
+            businessContext: expect.objectContaining({
+              transactionType: 'settlement',
+              amount: 1000,
+              currency: 'USD',
+            }),
+          }),
+        }),
         {
           attempts: 5,
           priority: PRIORITY_LEVELS.HIGH,
@@ -96,11 +124,18 @@ describe('TransactionMessageQueueService', () => {
         toAccount: 'acc-4',
       };
 
-      await service.enqueueSettlement(settlementData);
+      await service.enqueueSettlement(settlementData, mockUser);
 
       expect(mockQueue.add).toHaveBeenCalledWith(
         'transaction.settlement.v1',
-        settlementData,
+        expect.objectContaining({
+          ...settlementData,
+          metadata: expect.objectContaining({
+            correlationId: 'settlement-test-tx-456',
+            user: mockUser,
+            source: 'transaction-service',
+          }),
+        }),
         expect.objectContaining({
           attempts: 5,
           priority: PRIORITY_LEVELS.HIGH,
@@ -119,11 +154,26 @@ describe('TransactionMessageQueueService', () => {
         amount: 250,
       };
 
-      await service.enqueueRefund(refundData, 'refund-corr-123');
+      await service.enqueueRefund(refundData, mockUser, 'refund-corr-123');
 
       expect(mockQueue.add).toHaveBeenCalledWith(
         'transaction.refund.v1',
-        refundData,
+        {
+          txId: 'refund-tx-789',
+          reason: 'Customer request',
+          amount: 250,
+          metadata: {
+            correlationId: 'refund-corr-123',
+            user: mockUser,
+            source: 'transaction-service',
+            timestamp: expect.any(Date),
+            businessContext: {
+              transactionType: 'refund',
+              reason: 'Customer request',
+              amount: 250,
+            },
+          },
+        },
         {
           attempts: 3,
           priority: PRIORITY_LEVELS.HIGH,
@@ -140,11 +190,29 @@ describe('TransactionMessageQueueService', () => {
         rules: ['rule1', 'rule2', 'rule3'],
       };
 
-      await service.enqueueValidation(validationData, 'validation-corr-456');
+      await service.enqueueValidation(
+        validationData,
+        mockUser,
+        'validation-corr-456',
+      );
 
       expect(mockQueue.add).toHaveBeenCalledWith(
         'transaction.validation.v1',
-        validationData,
+        {
+          txId: 'validation-tx-101',
+          rules: ['rule1', 'rule2', 'rule3'],
+          metadata: {
+            correlationId: 'validation-corr-456',
+            user: mockUser,
+            source: 'transaction-service',
+            timestamp: expect.any(Date),
+            businessContext: {
+              transactionType: 'validation',
+              rulesCount: 3,
+              rules: ['rule1', 'rule2', 'rule3'],
+            },
+          },
+        },
         {
           attempts: 2,
           priority: PRIORITY_LEVELS.NORMAL,
