@@ -3,4 +3,3 @@
  */
 
 export * from './transaction-event.processor';
-export * from './transaction.processor';

@@ -25,10 +25,7 @@ import {
   TransactionEventHandler,
   TransactionEventSubscriptionManager,
 } from './infrastructure/event-handlers';
-import {
-  TransactionEventProcessor,
-  TransactionProcessor,
-} from './infrastructure/processors';
+import { TransactionEventProcessor } from './infrastructure/processors';
 import {
   TransactionMemoryProjection,
   TransactionProjectionManager,
@@ -85,9 +82,6 @@ import { TransactionMessageQueueService } from './infrastructure/services/transa
 
     // Event processor for handling domain events
     TransactionEventProcessor,
-
-    // BullMQ worker processor for handling transaction processing jobs
-    TransactionProcessor,
 
     // Transaction event handler for business logic
     TransactionEventHandler,
