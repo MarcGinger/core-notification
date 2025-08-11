@@ -8,7 +8,7 @@
  * Confidential and proprietary.
  */
 
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { IGenericQueue } from '../../domain/interfaces/generic-queue.interface';
 
 /**

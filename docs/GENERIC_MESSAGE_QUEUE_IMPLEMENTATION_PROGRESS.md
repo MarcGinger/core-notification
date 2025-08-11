@@ -40,7 +40,7 @@ This document outlines the current progress in implementing a comprehensive gene
 #### 5. Module Configuration (`src/shared/message-queue/`)
 
 - **`generic-message-queue-infra.module.ts`**: Infrastructure module
-  - ✅ Provides `GenericMessageQueueService` 
+  - ✅ Provides `GenericMessageQueueService`
   - ✅ Includes `QueueRegistryProvider`
   - ✅ Exports generic queue commands
   - ✅ Integrated into transaction module
@@ -50,7 +50,6 @@ This document outlines the current progress in implementing a comprehensive gene
 - **Transaction Business Handlers**: ✅ Successfully refactored to use domain interfaces
   - Uses `@Inject('ITransactionMessageQueue')` instead of direct BullMQ injection
   - Clean separation between business logic and infrastructure
-  
 - **Transaction Job Dispatcher**: ✅ Successfully refactored to implement domain interface
   - Implements `ITransactionJobDispatcher` domain interface
   - Hides BullMQ implementation details behind clean interface

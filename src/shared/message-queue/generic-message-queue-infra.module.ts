@@ -43,7 +43,7 @@ import { QueueRegistryProvider } from './infrastructure/providers';
   providers: [
     // Queue registry
     QueueRegistryProvider,
-    
+
     // Core queue services
     GenericMessageQueueService,
 

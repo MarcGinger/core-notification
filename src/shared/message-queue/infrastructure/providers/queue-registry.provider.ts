@@ -20,11 +20,11 @@ export const QueueRegistryProvider: Provider = {
   provide: 'QUEUE_REGISTRY',
   useFactory: () => {
     const registry = new Map<string, IGenericQueue>();
-    
+
     // Register simple adapters for testing
     registry.set('transaction', new SimpleBullMQAdapter('transaction'));
     registry.set('default', new SimpleBullMQAdapter('default'));
-    
+
     return registry;
   },
   inject: [],
