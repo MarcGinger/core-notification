@@ -1,105 +1,123 @@
-# Copilot/Cursor Spec — Event-Driven Generic Message Queue System (NestJS + DDD + CQRS + EventStore)
+# Production Message Queue System — Clean Architecture Roadmap (NestJS + DDD + CQRS + BullMQ)
 
-> This specification outlines our **production-ready** generic message queue system that integrates EventStore event sourcing with automatic message routing using the Strategy pattern.
-
----
-
-## Goals
-
-- ✅ **Event-driven architecture** with EventStore integration for exactly-once delivery
-- ✅ **Strategy-based routing** that automatically routes messages based on content analysis
-- ✅ **Domain-agnostic** queue abstraction with technology-agnostic service layer
-- ✅ **BullMQ integration** with clean abstraction allowing future queue implementations
-- ✅ **Type-safe** message processing with full TypeScript generics support
-- ✅ **Extensible routing** supporting Slack, Email, Notification, and Data Processing queues
-- ✅ **Production-ready** with comprehensive logging, error handling, and monitoring
-- ✅ **CQRS integration** showing how domain services remain queue-technology agnostic
+> **Greenfield Implementation Roadmap**: This specification defines our production-ready generic message queue system with clean architecture principles, domain-driven design, and technology-agnostic abstractions.
 
 ---
 
-## Architecture Overview
+## 🎯 **System Goals**
 
-Our implementation uses **EventStore** as the event source, with automatic message routing to **BullMQ** queues based on the **Strategy pattern**:
+- ✅ **Domain-Driven Architecture** with each service owning its queue operations
+- ✅ **Technology-Agnostic Abstraction** enabling queue provider swapping
+- ✅ **Type-Safe Operations** with full TypeScript generics support
+- ✅ **Production BullMQ Integration** with Redis backing
+- ✅ **Clean Module Boundaries** with explicit separation of concerns
+- ✅ **Scalable Worker Patterns** for async processing
+- ✅ **Comprehensive Monitoring** with health checks and metrics
+
+---
+
+## 🏗️ **Architecture Overview**
+
+Our system follows clean architecture with strict boundaries:
 
 ```
-┌─────────────────────┐
-│    EventStore       │
-│  (Event Source)     │
-└──────────┬──────────┘
-           │ Events
-           ▼
-┌─────────────────────┐
-│ MessageQueueEvent   │
-│ SubscriptionManager │ ← Subscribes to EventStore streams
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│ MessageQueueEvent   │
-│     Handler         │ ← Generic router with strategy pattern
-│  (Strategy Router)  │
-└──────────┬──────────┘
-           │
-    ┌──────┴──────┐
-    │  Strategies │ ← SlackMessageStrategy, EmailMessageStrategy, etc.
-    └──────┬──────┘
-           │
-    ┌──────▼──────┐
-    │   BullMQ    │ ← SLACK_MESSAGE, EMAIL, NOTIFICATION, DATA_PROCESSING
-    │   Queues    │
-    └─────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        DOMAIN LAYER                             │
+│  ┌───────────────┐ ┌───────────────┐ ┌───────────────────────┐  │
+│  │ Transaction   │ │ Notification  │ │    Slack Worker       │  │
+│  │   Module      │ │    Module     │ │      Module           │  │
+│  │               │ │               │ │                       │  │
+│  │ • Commands    │ │ • Handlers    │ │ • Processors          │  │
+│  │ • Queries     │ │ • Templates   │ │ • Formatters          │  │
+│  │ • Services    │ │ • Routing     │ │ • Delivery            │  │
+│  └───────┬───────┘ └───────┬───────┘ └───────────┬───────────┘  │
+└──────────┼─────────────────┼─────────────────────┼──────────────┘
+           │                 │                     │
+           ▼                 ▼                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    INFRASTRUCTURE LAYER                        │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │              Generic Queue Abstraction                     │ │
+│  │  IGenericQueue<T> → BullMQGenericQueue → Redis/BullMQ     │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+**Key Principles:**
+
+- ✅ **Domain modules own their queue operations** (no shared strategies)
+- ✅ **Infrastructure provides only execution capability** (IGenericQueue port)
+- ✅ **Clean boundaries** with dependency inversion
+- ✅ **Technology swappable** (BullMQ → RabbitMQ → SQS)
 
 ---
 
-## File Structure (Current Implementation)
+## 📁 **File Structure**
 
 ```
 src/shared/message-queue/
 ├── domain/
-│   ├── aggregates/                   # Message entities and value objects
 │   └── interfaces/
-│       └── generic-queue.interface.ts # ✅ Core queue abstraction
-├── application/
-│   ├── commands/                     # CQRS commands for queue operations
-│   └── services/                     # Application services
+│       ├── generic-queue.interface.ts    # ✅ Core abstraction
+│       └── queue-job.types.ts           # ✅ Job definitions
 ├── infrastructure/
-│   ├── event-handlers/              # ✅ Event-driven routing system
-│   │   ├── message-queue-event.handler.ts      # Main strategy router
-│   │   └── message-queue-event.manager.ts      # EventStore subscription
-│   ├── services/
-│   │   └── generic-message-queue.service.ts    # ✅ Technology-agnostic service
-│   ├── strategies/                   # ✅ Routing strategies
-│   │   ├── slack-message.strategy.ts
-│   │   ├── email-message.strategy.ts
-│   │   ├── notification.strategy.ts
-│   │   └── data-processing.strategy.ts
 │   ├── adapters/
-│   │   └── simple-bullmq.adapter.ts # ✅ Working BullMQ implementation
-│   └── providers/
-│       └── queue-registry.provider.ts # ✅ Queue registry management
-├── generic-message-queue.module.ts  # ✅ Strategy configuration
-├── generic-message-queue-infra.module.ts # ✅ Infrastructure wiring
-├── types.ts                        # Core types and interfaces
-├── README.md                       # ✅ Comprehensive documentation
-├── IMPLEMENTATION_SUMMARY.md       # ✅ Technical summary
-└── USAGE_EXAMPLES.md               # ✅ Usage examples
+│   │   ├── bullmq-generic-queue.adapter.ts  # ✅ Production BullMQ
+│   │   └── simple-bullmq.adapter.ts         # 🔧 Development stub
+│   ├── providers/
+│   │   └── queue-registry.provider.ts       # ✅ Queue management
+│   └── tokens/
+│       └── queue.tokens.ts                  # ✅ DI symbols
+├── generic-message-queue.module.ts          # ✅ Infrastructure module
+├── README.md                               # 📖 Usage documentation
+└── ARCHITECTURE.md                         # 📖 Design decisions
+
+# Domain implementations:
+src/bull-transaction/
+├── domain/
+│   └── interfaces/
+│       └── transaction-message-queue.interface.ts
+├── infrastructure/
+│   └── services/
+│       └── transaction-message-queue.service.ts  # ✅ Domain-specific impl
+└── transaction.module.ts
+
+src/core-slack-worker/
+├── application/
+│   └── handlers/
+│       └── slack-message.handler.ts              # ✅ Message processing
+├── infrastructure/
+│   └── services/
+│       └── slack-queue.service.ts                # ✅ Domain-specific impl
+└── core-slack-worker.module.ts
+
+src/notifications/
+└── (similar domain-driven structure)
 ```
 
 ---
 
-## Core Interfaces (Production Implementation)
+## 🔧 **Core Infrastructure**
+
+### DI Tokens (`shared/tokens/queue.tokens.ts`)
+
+```ts
+// ✅ Symbol-based tokens prevent collisions
+export const QUEUE_TOKENS = {
+  GENERIC_QUEUE: Symbol('IGenericQueue'),
+  QUEUE_REGISTRY: Symbol('QUEUE_REGISTRY'),
+  QUEUE_CONFIG: Symbol('QUEUE_CONFIG'),
+} as const;
+
+export type QueueTokens = typeof QUEUE_TOKENS;
+```
 
 ### Generic Queue Interface (`domain/interfaces/generic-queue.interface.ts`)
 
 ```ts
 export interface IGenericQueue<T = any> {
   // Core operations
-  add(
-    jobName: string,
-    data: T,
-    options?: QueueJobOptions,
-  ): Promise<QueueJob<T>>;
+  add(name: string, data: T, options?: QueueJobOptions): Promise<QueueJob<T>>;
   addBulk(
     jobs: Array<{ name: string; data: T; options?: QueueJobOptions }>,
   ): Promise<QueueJob<T>[]>;
@@ -111,7 +129,10 @@ export interface IGenericQueue<T = any> {
   // Queue operations
   pause(): Promise<void>;
   resume(): Promise<void>;
-  clean(grace: number, limit?: number, type?: string): Promise<number>;
+  clean(
+    grace: number,
+    status: 'completed' | 'failed' | 'active',
+  ): Promise<void>;
 
   // Monitoring
   getStats(): Promise<QueueStats>;
@@ -120,13 +141,13 @@ export interface IGenericQueue<T = any> {
 export interface QueueJobOptions {
   delay?: number;
   attempts?: number;
-  priority?: number;
+  priority?: number; // ⚠️ BullMQ: Lower numbers = higher priority
   backoff?: {
     type: 'fixed' | 'exponential';
     delay: number;
   };
-  removeOnComplete?: boolean | number;
-  removeOnFail?: boolean | number;
+  removeOnComplete?: number;
+  removeOnFail?: number;
   jobId?: string;
 }
 
@@ -134,457 +155,537 @@ export interface QueueJob<T = any> {
   id: string;
   name: string;
   data: T;
-  options?: QueueJobOptions;
-}
-
-export interface QueueStats {
-  waiting: number;
-  active: number;
-  completed: number;
-  failed: number;
-  delayed: number;
-  paused: number;
+  opts: QueueJobOptions;
+  progress: number;
+  returnvalue?: any;
+  failedReason?: string;
+  processedOn?: number;
+  finishedOn?: number;
 }
 ```
 
-### Routing Strategy Interface (`infrastructure/strategies/`)
+### Priority Constants (`domain/constants/priority.constants.ts`)
 
 ```ts
-export interface IMessageRoutingStrategy<
-  TEventData = any,
-  TJobOptions = any,
-  TTransformedData = any,
-> {
-  // Strategy identification
-  readonly name: string;
-  readonly priority: number;
+/**
+ * ⚠️ BullMQ Priority Semantics: LOWER numbers = HIGHER priority
+ */
+export const PRIORITY_LEVELS = {
+  CRITICAL: 1, // System alerts, failures
+  HIGH: 3, // User notifications, time-sensitive
+  NORMAL: 5, // Standard business operations
+  LOW: 7, // Background processing
+  BULK: 10, // Bulk operations, cleanup
+} as const;
 
-  // Routing logic
-  canHandle(eventData: TEventData, user: any, meta: any): boolean;
-  getQueueName(): string;
-  getJobOptions(eventData: TEventData, user: any, meta: any): TJobOptions;
-
-  // Data transformation
-  transformData(eventData: TEventData, user: any, meta: any): TTransformedData;
-}
+export type PriorityLevel =
+  (typeof PRIORITY_LEVELS)[keyof typeof PRIORITY_LEVELS];
 ```
 
----
-
-## Routing Strategies (Strategy Pattern Implementation)
-
-Our system includes four production-ready routing strategies with priority-based selection:
-
-### 1. SlackMessageStrategy (Priority: 1 - Highest)
+### Queue Names (`domain/constants/queue-names.constants.ts`)
 
 ```ts
-@Injectable()
-export class SlackMessageStrategy
-  implements IMessageRoutingStrategy<any, any, any>
-{
-  canHandle(eventData: any, user: any, meta: any): boolean {
-    return (
-      this.hasSlackChannel(eventData) ||
-      this.isSlackStream(meta.stream) ||
-      this.isSlackMessageType(eventData)
-    );
-  }
+/**
+ * Standardized queue naming: kebab-case, resource-based
+ */
+export const QUEUE_NAMES = {
+  // Transaction processing
+  TRANSACTION_PROCESSING: 'transaction-processing',
+  TRANSACTION_SETTLEMENT: 'transaction-settlement',
 
-  getQueueName(): string {
-    return QUEUE_NAMES.SLACK_MESSAGE;
-  }
+  // Notifications
+  NOTIFICATION_EMAIL: 'notification-email',
+  NOTIFICATION_PUSH: 'notification-push',
 
-  getJobOptions(): any {
-    return {
-      attempts: 3,
-      priority: 1,
-      removeOnComplete: true,
-    };
-  }
-}
-```
+  // Slack integration
+  SLACK_MESSAGES: 'slack-messages',
+  SLACK_ALERTS: 'slack-alerts',
 
-### 2. EmailMessageStrategy (Priority: 2)
+  // Background processing
+  DATA_PROCESSING: 'data-processing',
+  FILE_PROCESSING: 'file-processing',
+} as const;
 
-```ts
-@Injectable()
-export class EmailMessageStrategy
-  implements IMessageRoutingStrategy<any, any, any>
-{
-  canHandle(eventData: any, user: any, meta: any): boolean {
-    return (
-      this.hasEmailFields(eventData) ||
-      this.isEmailStream(meta.stream) ||
-      this.isEmailMessageType(eventData)
-    );
-  }
-
-  getQueueName(): string {
-    return QUEUE_NAMES.EMAIL;
-  }
-
-  getJobOptions(): any {
-    return {
-      attempts: 5,
-      priority: 2,
-      delay: 1000, // 1 second delay for email processing
-    };
-  }
-}
-```
-
-### 3. NotificationStrategy (Priority: 3)
-
-```ts
-@Injectable()
-export class NotificationStrategy
-  implements IMessageRoutingStrategy<any, any, any>
-{
-  canHandle(eventData: any, user: any, meta: any): boolean {
-    return (
-      this.hasNotificationFields(eventData) ||
-      this.isNotificationStream(meta.stream) ||
-      this.isNotificationMessageType(eventData)
-    );
-  }
-
-  getQueueName(): string {
-    return QUEUE_NAMES.NOTIFICATION;
-  }
-
-  getJobOptions(): any {
-    return {
-      attempts: 3,
-      priority: 5, // High priority for notifications
-      removeOnComplete: true,
-    };
-  }
-}
-```
-
-### 4. DataProcessingStrategy (Priority: 999 - Fallback)
-
-```ts
-@Injectable()
-export class DataProcessingStrategy
-  implements IMessageRoutingStrategy<any, any, any>
-{
-  canHandle(): boolean {
-    return true; // Always handles as fallback
-  }
-
-  getQueueName(): string {
-    return QUEUE_NAMES.DATA_PROCESSING;
-  }
-
-  getJobOptions(): any {
-    return {
-      attempts: 2,
-      priority: 1, // Low priority for general processing
-      delay: 5000, // 5 second delay for batch processing
-    };
-  }
-}
+export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 ```
 
 ---
 
-## Event-Driven Message Router
+## 🏭 **Production BullMQ Adapter**
 
-The core of our system is the `MessageQueueEventHandler` that listens to EventStore and routes messages:
+### BullMQ Implementation (`infrastructure/adapters/bullmq-generic-queue.adapter.ts`)
 
 ```ts
+import { Queue, Job, QueueOptions } from 'bullmq';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import {
+  IGenericQueue,
+  QueueJob,
+  QueueJobOptions,
+  QueueStats,
+} from '../domain/interfaces';
+
 @Injectable()
-export class MessageQueueEventHandler {
-  constructor(
-    @Inject('IGenericQueue') private readonly queue: IGenericQueue,
-    private readonly slackStrategy: SlackMessageStrategy,
-    private readonly emailStrategy: EmailMessageStrategy,
-    private readonly notificationStrategy: NotificationStrategy,
-    private readonly dataProcessingStrategy: DataProcessingStrategy,
-  ) {
-    // Strategies are ordered by priority (lower number = higher priority)
-    this.strategies = [
-      this.slackStrategy,
-      this.emailStrategy,
-      this.notificationStrategy,
-      this.dataProcessingStrategy, // fallback
-    ].sort((a, b) => a.priority - b.priority);
+export class BullMQGenericQueue implements IGenericQueue, OnModuleDestroy {
+  constructor(private readonly bullQueue: Queue) {}
+
+  async add<T = any>(
+    name: string,
+    data: T,
+    options?: QueueJobOptions,
+  ): Promise<QueueJob<T>> {
+    const job = await this.bullQueue.add(name, data, {
+      delay: options?.delay,
+      attempts: options?.attempts || 3,
+      priority: options?.priority || PRIORITY_LEVELS.NORMAL,
+      removeOnComplete: options?.removeOnComplete || 100,
+      removeOnFail: options?.removeOnFail || 50,
+      jobId: options?.jobId,
+      backoff: options?.backoff
+        ? {
+            type: options.backoff.type,
+            delay: options.backoff.delay,
+          }
+        : { type: 'exponential', delay: 2000 },
+    });
+
+    return {
+      id: job.id!,
+      name: job.name,
+      data: job.data,
+      opts: {
+        delay: options?.delay,
+        attempts: options?.attempts,
+        priority: options?.priority,
+        removeOnComplete: options?.removeOnComplete,
+        removeOnFail: options?.removeOnFail,
+        jobId: job.id,
+      },
+      progress: typeof job.progress === 'number' ? job.progress : 0,
+      returnvalue: job.returnvalue,
+      failedReason: job.failedReason,
+      processedOn: job.processedOn,
+      finishedOn: job.finishedOn,
+    };
   }
 
-  async handle(eventData: any, user: any, meta: any): Promise<void> {
-    // Find the first strategy that can handle this message
-    const strategy = this.strategies.find((s) =>
-      s.canHandle(eventData, user, meta),
-    );
+  async addBulk<T = any>(
+    jobs: Array<{ name: string; data: T; options?: QueueJobOptions }>,
+  ): Promise<QueueJob<T>[]> {
+    const bullJobs = jobs.map((job) => ({
+      name: job.name,
+      data: job.data,
+      opts: {
+        priority: job.options?.priority || PRIORITY_LEVELS.NORMAL,
+        attempts: job.options?.attempts || 3,
+        // ... other options
+      },
+    }));
 
-    if (!strategy) {
-      throw new Error('No strategy found to handle message');
+    const addedJobs = await this.bullQueue.addBulk(bullJobs);
+    return addedJobs.map((job) => ({
+      id: job.id!,
+      name: job.name,
+      data: job.data,
+      opts: job.opts,
+      progress: 0,
+    }));
+  }
+
+  async getJob<T = any>(jobId: string): Promise<QueueJob<T> | null> {
+    const job = await this.bullQueue.getJob(jobId);
+    if (!job) return null;
+
+    return {
+      id: job.id!,
+      name: job.name,
+      data: job.data,
+      opts: job.opts,
+      progress: await job.progress(),
+      returnvalue: job.returnvalue,
+      failedReason: job.failedReason,
+      processedOn: job.processedOn,
+      finishedOn: job.finishedOn,
+    };
+  }
+
+  async removeJob(jobId: string): Promise<void> {
+    const job = await this.bullQueue.getJob(jobId);
+    if (job) {
+      await job.remove();
     }
+  }
 
-    // Transform data and enqueue
-    const transformedData = strategy.transformData(eventData, user, meta);
-    const jobOptions = strategy.getJobOptions(eventData, user, meta);
-    const queueName = strategy.getQueueName();
+  async getStats(): Promise<QueueStats> {
+    const [waiting, active, completed, failed, delayed] = await Promise.all([
+      this.bullQueue.getWaiting(),
+      this.bullQueue.getActive(),
+      this.bullQueue.getCompleted(),
+      this.bullQueue.getFailed(),
+      this.bullQueue.getDelayed(),
+    ]);
 
-    await this.queue.add(`${queueName}-job`, transformedData, jobOptions);
+    return {
+      waiting: waiting.length,
+      active: active.length,
+      completed: completed.length,
+      failed: failed.length,
+      delayed: delayed.length,
+    };
+  }
+
+  async pause(): Promise<void> {
+    await this.bullQueue.pause();
+  }
+
+  async resume(): Promise<void> {
+    await this.bullQueue.resume();
+  }
+
+  async clean(
+    grace: number,
+    status: 'completed' | 'failed' | 'active',
+  ): Promise<void> {
+    await this.bullQueue.clean(grace, 100, status);
+  }
+
+  async onModuleDestroy() {
+    await this.bullQueue.close();
   }
 }
 ```
 
-### EventStore Integration
+### Queue Registry Provider (`infrastructure/providers/queue-registry.provider.ts`)
 
 ```ts
-@Injectable()
-export class MessageQueueEventSubscriptionManager implements OnModuleInit {
-  async onModuleInit() {
-    // Subscribe to all relevant EventStore streams
-    await this.subscribeToStream('$et-slack.message.*');
-    await this.subscribeToStream('$et-notification.*');
-    await this.subscribeToStream('$et-transaction.*');
-    await this.subscribeToStream('$et-email.*');
-  }
+import { Provider } from '@nestjs/common';
+import { Queue } from 'bullmq';
+import { QUEUE_TOKENS, QUEUE_NAMES } from '../constants';
+import { BullMQGenericQueue } from '../adapters/bullmq-generic-queue.adapter';
 
-  private async subscribeToStream(streamPattern: string) {
-    await this.eventStore.subscribeToStream(streamPattern, (event) =>
-      this.messageQueueHandler.handle(
-        event.data,
-        event.metadata.user,
-        event.metadata,
-      ),
-    );
-  }
-}
+export const QueueRegistryProvider: Provider = {
+  provide: QUEUE_TOKENS.QUEUE_REGISTRY,
+  useFactory: () => {
+    const redisConfig = {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD,
+    };
+
+    const registry = new Map<string, BullMQGenericQueue>();
+
+    // Register all production queues
+    Object.values(QUEUE_NAMES).forEach((queueName) => {
+      const bullQueue = new Queue(queueName, {
+        connection: redisConfig,
+        defaultJobOptions: {
+          removeOnComplete: 100,
+          removeOnFail: 50,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
+      });
+
+      registry.set(queueName, new BullMQGenericQueue(bullQueue));
+    });
+
+    return registry;
+  },
+};
 ```
 
 ---
 
-## Module Configuration (NestJS Integration)
+## 🏢 **Domain Implementation Examples**
+
+### Transaction Domain (`bull-transaction/`)
+
+#### Domain Interface (`domain/interfaces/transaction-message-queue.interface.ts`)
+
+```ts
+export interface TransactionSettlementData {
+  txId: string;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  merchantId: string;
+}
+
+export interface TransactionValidationData {
+  txId: string;
+  rules: string[];
+  riskScore: number;
+}
+
+export interface ITransactionMessageQueue {
+  enqueueSettlement(
+    data: TransactionSettlementData,
+    correlationId?: string,
+  ): Promise<void>;
+  enqueueValidation(
+    data: TransactionValidationData,
+    correlationId?: string,
+  ): Promise<void>;
+  enqueueRefund(
+    data: TransactionRefundData,
+    correlationId?: string,
+  ): Promise<void>;
+}
+```
+
+#### Infrastructure Implementation (`infrastructure/services/transaction-message-queue.service.ts`)
+
+```ts
+@Injectable()
+export class TransactionMessageQueueService
+  implements ITransactionMessageQueue
+{
+  private readonly logger = new Logger(TransactionMessageQueueService.name);
+
+  constructor(
+    @Inject(QUEUE_TOKENS.QUEUE_REGISTRY)
+    private readonly queueRegistry: Map<string, IGenericQueue>,
+  ) {}
+
+  private getQueue(): IGenericQueue {
+    const queue = this.queueRegistry.get(QUEUE_NAMES.TRANSACTION_PROCESSING);
+    if (!queue) {
+      throw new Error('Transaction processing queue not found');
+    }
+    return queue;
+  }
+
+  async enqueueSettlement(
+    data: TransactionSettlementData,
+    correlationId?: string,
+  ): Promise<void> {
+    this.logger.log(`Enqueuing settlement for transaction ${data.txId}`);
+
+    await this.getQueue().add('transaction.settlement.v1', data, {
+      attempts: 5,
+      priority: PRIORITY_LEVELS.HIGH,
+      backoff: { type: 'exponential', delay: 5000 },
+      jobId: correlationId || `settlement-${data.txId}`,
+    });
+
+    this.logger.log(`Settlement job enqueued for transaction ${data.txId}`);
+  }
+
+  async enqueueValidation(
+    data: TransactionValidationData,
+    correlationId?: string,
+  ): Promise<void> {
+    this.logger.log(`Enqueuing validation for transaction ${data.txId}`);
+
+    await this.getQueue().add('transaction.validation.v1', data, {
+      attempts: 2,
+      priority: PRIORITY_LEVELS.NORMAL,
+      jobId: correlationId || `validation-${data.txId}`,
+    });
+
+    this.logger.log(`Validation job enqueued for transaction ${data.txId}`);
+  }
+
+  async enqueueRefund(
+    data: TransactionRefundData,
+    correlationId?: string,
+  ): Promise<void> {
+    this.logger.log(`Enqueuing refund for transaction ${data.txId}`);
+
+    await this.getQueue().add('transaction.refund.v1', data, {
+      attempts: 3,
+      priority: PRIORITY_LEVELS.HIGH,
+      jobId: correlationId || `refund-${data.txId}`,
+    });
+
+    this.logger.log(`Refund job enqueued for transaction ${data.txId}`);
+  }
+}
+```
+
+#### Module Configuration (`transaction.module.ts`)
 
 ```ts
 @Module({
   imports: [
-    // Other imports...
+    GenericMessageQueueModule, // Import infrastructure
+    // ... other imports
   ],
   providers: [
-    // Strategies (ordered by priority)
-    SlackMessageStrategy,
-    EmailMessageStrategy,
-    NotificationStrategy,
-    DataProcessingStrategy,
+    // Domain services
+    TransactionApplicationService,
 
-    // Core services
-    MessageQueueEventHandler,
-    MessageQueueEventSubscriptionManager,
-    GenericMessageQueueService,
-
-    // Infrastructure
-    QueueRegistryProvider,
-    SimpleBullMQAdapter,
-  ],
-  exports: [MessageQueueEventHandler, GenericMessageQueueService],
-})
-export class GenericMessageQueueModule {}
-
-@Module({
-  imports: [GenericMessageQueueModule],
-  providers: [
+    // Infrastructure bindings
     {
-      provide: 'QUEUE_REGISTRY',
-      useFactory: () => {
-        const registry = new Map<string, IGenericQueue>();
-        // Register queue implementations
-        registry.set('transaction', new SimpleBullMQAdapter('transaction'));
-        registry.set('default', new SimpleBullMQAdapter('default'));
-        return registry;
+      provide: 'ITransactionMessageQueue',
+      useClass: TransactionMessageQueueService,
+    },
+
+    // ... other providers
+  ],
+})
+export class TransactionModule {}
+```
+
+### Slack Worker Domain (`core-slack-worker/`)
+
+#### Message Handler (`application/handlers/slack-message.handler.ts`)
+
+```ts
+@Injectable()
+export class SlackMessageHandler {
+  private readonly logger = new Logger(SlackMessageHandler.name);
+
+  constructor(
+    @Inject(QUEUE_TOKENS.QUEUE_REGISTRY)
+    private readonly queueRegistry: Map<string, IGenericQueue>,
+    private readonly slackClient: SlackApiService,
+  ) {}
+
+  async sendChannelMessage(message: SlackChannelMessage): Promise<void> {
+    const queue = this.queueRegistry.get(QUEUE_NAMES.SLACK_MESSAGES);
+    if (!queue) {
+      throw new Error('Slack messages queue not found');
+    }
+
+    await queue.add('slack.channel.send.v1', message, {
+      priority: message.urgent ? PRIORITY_LEVELS.HIGH : PRIORITY_LEVELS.NORMAL,
+      attempts: 3,
+      jobId: `slack-${message.channel}-${Date.now()}`,
+    });
+
+    this.logger.log(`Slack message queued for channel ${message.channel}`);
+  }
+
+  async sendAlert(alert: SlackAlert): Promise<void> {
+    const queue = this.queueRegistry.get(QUEUE_NAMES.SLACK_ALERTS);
+    if (!queue) {
+      throw new Error('Slack alerts queue not found');
+    }
+
+    await queue.add('slack.alert.send.v1', alert, {
+      priority: PRIORITY_LEVELS.CRITICAL,
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 1000 },
+      jobId: `alert-${alert.type}-${Date.now()}`,
+    });
+
+    this.logger.log(`Slack alert queued: ${alert.type}`);
+  }
+}
+```
+
+---
+
+## 🔧 **Infrastructure Module**
+
+### Generic Message Queue Module (`generic-message-queue.module.ts`)
+
+```ts
+@Module({
+  providers: [
+    // Infrastructure providers
+    QueueRegistryProvider,
+
+    // DI configurations
+    {
+      provide: QUEUE_TOKENS.GENERIC_QUEUE,
+      useFactory: (registry: Map<string, IGenericQueue>) => {
+        return registry.get(QUEUE_NAMES.DATA_PROCESSING);
       },
+      inject: [QUEUE_TOKENS.QUEUE_REGISTRY],
     },
   ],
-  exports: ['QUEUE_REGISTRY'],
+  exports: [QUEUE_TOKENS.QUEUE_REGISTRY, QUEUE_TOKENS.GENERIC_QUEUE],
 })
-export class GenericMessageQueueInfraModule {}
+export class GenericMessageQueueModule {}
 ```
 
 ---
 
-## BullMQ Adapter (Production Implementation)
+## 🧪 **Testing Strategy**
 
-Our current working implementation uses a simple but effective BullMQ adapter:
+### Unit Testing Domain Services
 
 ```ts
-@Injectable()
-export class SimpleBullMQAdapter implements IGenericQueue {
-  private queueName: string;
+describe('TransactionMessageQueueService', () => {
+  let service: TransactionMessageQueueService;
+  let mockQueue: jest.Mocked<IGenericQueue>;
+  let queueRegistry: Map<string, IGenericQueue>;
 
-  constructor(queueName: string) {
-    this.queueName = queueName;
-    console.log(`SimpleBullMQAdapter initialized for queue: ${queueName}`);
-  }
-
-  async add(
-    jobName: string,
-    data: any,
-    options?: QueueJobOptions,
-  ): Promise<QueueJob> {
-    console.log(`SimpleBullMQAdapter.add called:`, {
-      queue: this.queueName,
-      jobName,
-      data,
-      options,
-    });
-
-    // Create job with unique ID
-    const job: QueueJob = {
-      id: `${this.queueName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: jobName,
-      data,
-      options,
+  beforeEach(async () => {
+    mockQueue = {
+      add: jest.fn(),
+      addBulk: jest.fn(),
+      getJob: jest.fn(),
+      removeJob: jest.fn(),
+      pause: jest.fn(),
+      resume: jest.fn(),
+      clean: jest.fn(),
+      getStats: jest.fn(),
     };
 
-    console.log(`Job created successfully:`, job);
-    return job;
-  }
+    queueRegistry = new Map();
+    queueRegistry.set(QUEUE_NAMES.TRANSACTION_PROCESSING, mockQueue);
 
-  async addBulk(
-    jobs: Array<{ name: string; data: any; options?: QueueJobOptions }>,
-  ): Promise<QueueJob[]> {
-    console.log(`SimpleBullMQAdapter.addBulk called with ${jobs.length} jobs`);
-    return Promise.all(
-      jobs.map((job) => this.add(job.name, job.data, job.options)),
+    const module = await Test.createTestingModule({
+      providers: [
+        TransactionMessageQueueService,
+        {
+          provide: QUEUE_TOKENS.QUEUE_REGISTRY,
+          useValue: queueRegistry,
+        },
+      ],
+    }).compile();
+
+    service = module.get<TransactionMessageQueueService>(
+      TransactionMessageQueueService,
     );
-  }
+  });
 
-  async getJob(jobId: string): Promise<QueueJob | null> {
-    console.log(`SimpleBullMQAdapter.getJob called for jobId: ${jobId}`);
-    return null; // Simplified implementation
-  }
-
-  async removeJob(jobId: string): Promise<void> {
-    console.log(`SimpleBullMQAdapter.removeJob called for jobId: ${jobId}`);
-  }
-
-  async pause(): Promise<void> {
-    console.log(
-      `SimpleBullMQAdapter.pause called for queue: ${this.queueName}`,
-    );
-  }
-
-  async resume(): Promise<void> {
-    console.log(
-      `SimpleBullMQAdapter.resume called for queue: ${this.queueName}`,
-    );
-  }
-
-  async clean(grace: number, limit?: number, type?: string): Promise<number> {
-    console.log(`SimpleBullMQAdapter.clean called:`, { grace, limit, type });
-    return 0;
-  }
-
-  async getStats(): Promise<QueueStats> {
-    return {
-      waiting: 0,
-      active: 0,
-      completed: 0,
-      failed: 0,
-      delayed: 0,
-      paused: 0,
+  it('should enqueue settlement with correct priority', async () => {
+    const settlementData: TransactionSettlementData = {
+      txId: 'tx-123',
+      amount: 100.0,
+      currency: 'USD',
+      paymentMethod: 'credit_card',
+      merchantId: 'merchant-456',
     };
-  }
-}
-```
 
-**Note**: This adapter provides console logging for development/testing. For production BullMQ integration, replace console.log with actual BullMQ Queue operations.
+    await service.enqueueSettlement(settlementData, 'corr-789');
 
----
-
-## Domain Integration Example (Transaction Module)
-
-Our transaction module demonstrates how domain services remain queue-technology agnostic:
-
-### Business Service (Domain Layer)
-
-```ts
-@Injectable()
-export class TransactionMessageQueueService {
-  constructor(
-    @Inject('ITransactionMessageQueue')
-    private readonly messageQueue: ITransactionMessageQueue,
-  ) {}
-
-  async sendTransactionToQueue(transactionData: any): Promise<void> {
-    // Domain logic - no knowledge of BullMQ/RabbitMQ
-    return this.messageQueue.enqueueTransaction(transactionData);
-  }
-}
-```
-
-### Infrastructure Implementation
-
-```ts
-@Injectable()
-export class TransactionJobDispatcher
-  implements ITransactionJobDispatcher, ITransactionMessageQueue
-{
-  constructor(
-    @Inject('IGenericQueue') private readonly genericQueue: IGenericQueue,
-  ) {}
-
-  async enqueueTransaction(data: any): Promise<void> {
-    // Uses generic queue - can be BullMQ, RabbitMQ, etc.
-    await this.genericQueue.add('process-transaction', data, {
-      attempts: 3,
-      priority: 5,
-    });
-  }
-}
-```
-
-### Event-Driven Integration
-
-```ts
-@Injectable()
-export class TransactionEventHandler {
-  constructor(private readonly messageQueueHandler: MessageQueueEventHandler) {}
-
-  @EventPattern('transaction.created.v1')
-  async handleTransactionEvent(event: any): Promise<void> {
-    // Automatically routes to appropriate queue based on content
-    await this.messageQueueHandler.handle(
-      event.data,
-      event.metadata.user,
-      event.metadata,
+    expect(mockQueue.add).toHaveBeenCalledWith(
+      'transaction.settlement.v1',
+      settlementData,
+      expect.objectContaining({
+        priority: PRIORITY_LEVELS.HIGH,
+        attempts: 5,
+        jobId: 'corr-789',
+      }),
     );
-  }
-}
-```
-
----
-
-## Testing Strategy
-
-### Unit Testing (Strategy Pattern)
-
-```ts
-describe('SlackMessageStrategy', () => {
-  let strategy: SlackMessageStrategy;
-
-  beforeEach(() => {
-    strategy = new SlackMessageStrategy();
   });
 
-  it('should handle messages with Slack channels', () => {
-    const eventData = { channel: '#general' };
-    expect(strategy.canHandle(eventData, {}, {})).toBe(true);
-  });
+  it('should handle validation with normal priority', async () => {
+    const validationData: TransactionValidationData = {
+      txId: 'tx-123',
+      rules: ['amount_check', 'fraud_detection'],
+      riskScore: 0.3,
+    };
 
-  it('should return correct queue name', () => {
-    expect(strategy.getQueueName()).toBe(QUEUE_NAMES.SLACK_MESSAGE);
-  });
+    await service.enqueueValidation(validationData);
 
-  it('should provide appropriate job options', () => {
-    const options = strategy.getJobOptions({}, {}, {});
-    expect(options.attempts).toBe(3);
-    expect(options.priority).toBe(1);
+    expect(mockQueue.add).toHaveBeenCalledWith(
+      'transaction.validation.v1',
+      validationData,
+      expect.objectContaining({
+        priority: PRIORITY_LEVELS.NORMAL,
+        attempts: 2,
+        jobId: 'validation-tx-123',
+      }),
+    );
   });
 });
 ```
@@ -592,105 +693,282 @@ describe('SlackMessageStrategy', () => {
 ### Integration Testing
 
 ```ts
-describe('MessageQueueEventHandler', () => {
-  let handler: MessageQueueEventHandler;
-  let mockQueue: jest.Mocked<IGenericQueue>;
+describe('BullMQGenericQueue Integration', () => {
+  let adapter: BullMQGenericQueue;
+  let testQueue: Queue;
 
   beforeEach(async () => {
-    const module = await Test.createTestingModule({
-      providers: [
-        MessageQueueEventHandler,
-        { provide: 'IGenericQueue', useValue: mockQueue },
-        SlackMessageStrategy,
-        EmailMessageStrategy,
-        NotificationStrategy,
-        DataProcessingStrategy,
-      ],
-    }).compile();
+    const redisConfig = {
+      host: process.env.TEST_REDIS_HOST || 'localhost',
+      port: parseInt(process.env.TEST_REDIS_PORT || '6379'),
+    };
 
-    handler = module.get<MessageQueueEventHandler>(MessageQueueEventHandler);
+    testQueue = new Queue('test-queue', { connection: redisConfig });
+    adapter = new BullMQGenericQueue(testQueue);
   });
 
-  it('should route Slack messages to Slack queue', async () => {
-    const eventData = { channel: '#alerts' };
-    await handler.handle(eventData, {}, {});
+  afterEach(async () => {
+    await adapter.onModuleDestroy();
+  });
 
-    expect(mockQueue.add).toHaveBeenCalledWith(
-      'SLACK_MESSAGE-job',
-      expect.any(Object),
-      expect.objectContaining({ attempts: 3 }),
-    );
+  it('should add job with correct BullMQ priority semantics', async () => {
+    const jobData = { test: 'data' };
+
+    const job = await adapter.add('test.job.v1', jobData, {
+      priority: PRIORITY_LEVELS.CRITICAL, // Should be 1 (highest)
+    });
+
+    expect(job.id).toBeDefined();
+    expect(job.name).toBe('test.job.v1');
+
+    // Verify BullMQ job has correct priority (lower = higher)
+    const bullJob = await testQueue.getJob(job.id);
+    expect(bullJob?.opts.priority).toBe(1);
+  });
+
+  it('should handle bulk operations', async () => {
+    const jobs = [
+      {
+        name: 'bulk.job.v1',
+        data: { id: 1 },
+        options: { priority: PRIORITY_LEVELS.HIGH },
+      },
+      {
+        name: 'bulk.job.v1',
+        data: { id: 2 },
+        options: { priority: PRIORITY_LEVELS.LOW },
+      },
+    ];
+
+    const addedJobs = await adapter.addBulk(jobs);
+
+    expect(addedJobs).toHaveLength(2);
+    expect(addedJobs[0].data.id).toBe(1);
+    expect(addedJobs[1].data.id).toBe(2);
   });
 });
 ```
 
 ---
 
-## Production Features
+## 📊 **Monitoring & Health Checks**
 
-### ✅ **Implemented Features**
+### Health Check Implementation
 
-- **Event-driven architecture** with EventStore integration
-- **Strategy pattern routing** with automatic message classification
-- **Technology-agnostic service layer** supporting queue swapping
-- **Type-safe generics** throughout the codebase
-- **Comprehensive logging** for debugging and monitoring
-- **Error handling** with retry logic and fallback strategies
-- **Priority-based processing** with configurable job options
-- **Multi-tenant support** with user context propagation
+```ts
+@Injectable()
+export class MessageQueueHealthIndicator extends HealthIndicator {
+  constructor(
+    @Inject(QUEUE_TOKENS.QUEUE_REGISTRY)
+    private readonly queueRegistry: Map<string, IGenericQueue>,
+  ) {
+    super();
+  }
 
-### 🔄 **Future Enhancements**
+  async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    const results = {};
 
-- **Deduplication system** with Redis/in-memory stores
-- **RabbitMQ adapter** for multi-technology support
-- **Worker port abstraction** for job processing
-- **Configuration management** for runtime queue selection
-- **Metrics and monitoring** for queue performance tracking
-- **Dead letter queues** for failed message handling
-- **Circuit breaker patterns** for queue resilience
+    for (const [queueName, queue] of this.queueRegistry) {
+      try {
+        const stats = await queue.getStats();
+        results[queueName] = {
+          status: 'up',
+          ...stats,
+        };
+      } catch (error) {
+        results[queueName] = {
+          status: 'down',
+          error: error.message,
+        };
+      }
+    }
+
+    const allHealthy = Object.values(results).every(
+      (result: any) => result.status === 'up',
+    );
+
+    if (allHealthy) {
+      return this.getStatus(key, true, results);
+    } else {
+      throw new HealthCheckError('Message queues failed', results);
+    }
+  }
+}
+```
 
 ---
 
-## Key Benefits of Our Implementation
+## 🎯 **Job Naming Conventions**
 
-1. **✅ Production Ready**: Currently running successfully in production
-2. **✅ Domain Focused**: Tailored to our specific messaging needs (Slack, Email, Notifications, Transactions)
-3. **✅ Event-Driven**: Seamless integration with EventStore for exactly-once delivery
-4. **✅ Extensible**: Easy to add new routing strategies without changing existing code
-5. **✅ Type Safe**: Full TypeScript support with comprehensive error checking
-6. **✅ Testable**: Clear separation of concerns enables comprehensive unit testing
-7. **✅ Observable**: Detailed logging and monitoring at every step
-8. **✅ Maintainable**: Clean architecture with proper dependency injection
+### Semantic Job Names with Versioning
+
+```ts
+// ✅ CORRECT: Semantic action with versioning
+'transaction.settlement.v1';
+'notification.email.send.v2';
+'slack.alert.critical.v1';
+'data.cleanup.expired.v1';
+'file.process.image.v3';
+
+// ❌ WRONG: Generic or unclear names
+'process-data';
+'handle-event';
+'slack-message';
+'notification';
+```
+
+### Metadata Standards
+
+```ts
+interface StandardJobMetadata {
+  correlationId: string; // ✅ Required for tracing
+  user: IUserToken | SystemUser; // ✅ User context (supports system jobs)
+  source: string; // ✅ Originating service
+  timestamp: Date; // ✅ Job creation time
+  businessContext?: any; // ✅ Domain-specific data
+}
+
+// ✅ For system-initiated jobs (cron, background tasks, etc.)
+interface SystemUser {
+  sub: 'system';
+  tenant: string;
+  roles: ['system'];
+  displayName: 'System';
+}
+
+// ✅ Example usage with real user
+await queue.add('transaction.settlement.v1', settlementData, {
+  priority: PRIORITY_LEVELS.HIGH,
+  jobId: `settlement-${txId}-${Date.now()}`,
+  // Metadata embedded in job data
+  metadata: {
+    correlationId: 'tx-12345-settlement',
+    user: {
+      sub: 'user-john-uuid',
+      tenant: 'org-acme',
+      roles: ['customer', 'premium'],
+      displayName: 'John Doe',
+      email: 'john@acme.com',
+      // ...complete IUserToken shape
+    },
+    source: 'transaction-service',
+    timestamp: new Date(),
+    businessContext: {
+      transactionType: 'payment',
+      riskLevel: 'low',
+    },
+  },
+});
+
+// ✅ Example usage with system user
+await queue.add('data.cleanup.expired.v1', cleanupData, {
+  priority: PRIORITY_LEVELS.LOW,
+  metadata: {
+    correlationId: 'cleanup-daily-run',
+    user: {
+      sub: 'system',
+      tenant: 'org-acme',
+      roles: ['system'],
+      displayName: 'System',
+    },
+    source: 'background-scheduler',
+    timestamp: new Date(),
+    businessContext: {
+      jobType: 'maintenance',
+      schedule: 'daily',
+    },
+  },
+});
+```
 
 ---
 
-## Architecture Decision Record
+## 📋 **Architecture Decision Records**
 
-**Decision**: Use event-driven strategy pattern instead of generic port/adapter pattern
+### ADR-001: Domain-Owned Queue Operations
+
+**Decision**: Each domain module owns its queue operations rather than using shared strategies.
 
 **Rationale**:
 
-- Better integration with our EventStore-centric architecture
-- Automatic message routing reduces boilerplate code
-- Strategy pattern provides better extensibility for our domain-specific needs
-- Production testing validates the approach works reliably
+- **Better encapsulation**: Domain logic stays within domain boundaries
+- **Cleaner dependencies**: No shared strategy classes between domains
+- **Easier testing**: Each domain can mock its own queue dependencies
+- **Scalable**: New domains don't affect existing queue operations
 
-**Trade-offs**:
+**Implementation**:
 
-- Less generic than port/adapter pattern
-- More coupled to EventStore (acceptable for our use case)
-- Simpler implementation with less abstraction overhead
+- Each domain defines its own message queue interface
+- Infrastructure implements the interface using IGenericQueue
+- No shared strategy pattern or cross-domain dependencies
 
-**Status**: ✅ **APPROVED** - Successfully running in production
+### ADR-002: Symbol-Based DI Tokens
+
+**Decision**: Use Symbol-based dependency injection tokens instead of strings.
+
+**Rationale**:
+
+- **Collision prevention**: Symbols are unique and prevent naming conflicts
+- **Type safety**: Better TypeScript support and IDE assistance
+- **Refactoring safety**: Changes to token names caught at compile time
+
+### ADR-003: BullMQ as Primary Queue Provider
+
+**Decision**: Standardize on BullMQ with Redis backing for production.
+
+**Rationale**:
+
+- **Proven reliability**: Battle-tested in production environments
+- **Rich feature set**: Job priorities, delays, retries, monitoring
+- **Active ecosystem**: Good maintenance and community support
+- **Redis integration**: Leverage existing Redis infrastructure
 
 ---
 
-## Notes & Conventions
+## 🚀 **Production Deployment Checklist**
 
-- **Never** import BullMQ directly in domain/application layers—use `IGenericQueue` abstraction
-- **Always** use strategy pattern for routing new message types
-- **Prefer** EventStore integration over direct queue manipulation
-- **Use** correlation IDs for tracing and debugging
-- **Ensure** all strategies are **idempotent** and safe for reprocessing
-- **Log** comprehensively for debugging and monitoring
-- **Test** each strategy independently for reliability
+### Environment Configuration
+
+```env
+# Redis Configuration
+REDIS_HOST=prod-redis.example.com
+REDIS_PORT=6379
+REDIS_PASSWORD=secure-password
+REDIS_DB=0
+
+# Queue Configuration
+QUEUE_CONCURRENCY=10
+QUEUE_RETRY_ATTEMPTS=3
+QUEUE_DEFAULT_TIMEOUT=30000
+
+# Monitoring
+QUEUE_METRICS_ENABLED=true
+QUEUE_HEALTH_CHECK_INTERVAL=30000
+```
+
+### Production Readiness
+
+- [ ] **Redis cluster configured** with high availability
+- [ ] **Queue monitoring** integrated with application observability
+- [ ] **Dead letter queues** configured for failed jobs
+- [ ] **Worker scaling** configured based on queue load
+- [ ] **Alerting** set up for queue failures and backlogs
+- [ ] **Job retention policies** configured for completed/failed jobs
+- [ ] **Performance testing** completed under expected load
+- [ ] **Disaster recovery** procedures documented
+
+---
+
+## 📚 **Additional Resources**
+
+- **[BullMQ Documentation](https://docs.bullmq.io/)** - Official BullMQ guide
+- **[Redis Best Practices](https://redis.io/docs/manual/patterns/)** - Redis optimization
+- **[NestJS Queues](https://docs.nestjs.com/techniques/queues)** - NestJS queue integration
+- **[Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)** - Architectural principles
+
+---
+
+**Status**: 🎯 **Production Roadmap**  
+**Architecture**: ✅ **Clean & Domain-Driven**  
+**Implementation**: 🏗️ **Greenfield Ready**  
+**Last Updated**: August 11, 2025
