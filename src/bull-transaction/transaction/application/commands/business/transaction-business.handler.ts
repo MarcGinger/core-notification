@@ -10,7 +10,10 @@
 
 import { Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { ITransactionMessageQueue } from '../../../domain/services/transaction-message-queue.interface';
+import {
+  ITransactionMessageQueue,
+  TRANSACTION_MESSAGE_QUEUE_TOKEN,
+} from '../../../domain/services/transaction-message-queue.interface';
 import {
   InitiateTransferCommand,
   RefundPaymentCommand,
@@ -29,7 +32,7 @@ export class InitiateTransferHandler
   private readonly logger = new Logger(InitiateTransferHandler.name);
 
   constructor(
-    @Inject('ITransactionMessageQueue')
+    @Inject(TRANSACTION_MESSAGE_QUEUE_TOKEN)
     private readonly messageQueue: ITransactionMessageQueue,
   ) {}
 
@@ -74,7 +77,7 @@ export class RefundPaymentHandler
   private readonly logger = new Logger(RefundPaymentHandler.name);
 
   constructor(
-    @Inject('ITransactionMessageQueue')
+    @Inject(TRANSACTION_MESSAGE_QUEUE_TOKEN)
     private readonly messageQueue: ITransactionMessageQueue,
   ) {}
 
@@ -112,7 +115,7 @@ export class ValidateTransactionHandler
   private readonly logger = new Logger(ValidateTransactionHandler.name);
 
   constructor(
-    @Inject('ITransactionMessageQueue')
+    @Inject(TRANSACTION_MESSAGE_QUEUE_TOKEN)
     private readonly messageQueue: ITransactionMessageQueue,
   ) {}
 

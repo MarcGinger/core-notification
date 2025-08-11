@@ -3,6 +3,8 @@ import { CommandBus } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
 import { ILogger } from 'src/shared/logger';
 import { BullTransactionLoggingHelper } from '../../../shared/domain/value-objects';
+import { CreateTransactionCommand } from '../../application/commands';
+import { ITransaction } from '../../domain/entities';
 import { TransactionRepository } from '../repositories';
 
 /**
@@ -75,43 +77,15 @@ export class TransactionEventProcessor {
       logContext,
       `Processing transaction created event: transactionId '${transactionId}'`,
     );
-
     try {
-      // Load the transaction from EventStore
-      const transaction = await this.transactionRepository.getById(
-        user,
-        transactionId,
-      );
-
-      if (!transaction) {
-        throw new Error(`Transaction with ID ${transactionId} not found`);
-      }
-
-      // Update the transaction status to "queued" in EventStore
-      // This happens when the event is processed and queued for processing
-      transaction.markAsQueued(
-        user,
-        metadata.correlationId || 'event-driven',
-        0, // Default priority
-      );
-
-      // Save the aggregate with the new events
-      const sagaContext = {
-        sagaId: `transaction-${transactionId}`,
-        correlationId: metadata.correlationId || transactionId,
-        operationId: `event-${eventData.eventType}-${Date.now()}`,
-        isRetry: false,
-      };
-
-      await this.transactionRepository.updateAndReturnDtoWithSaga(
-        user,
-        transaction,
-        sagaContext,
-      );
+      const entity = await this.commandBus.execute<
+        CreateTransactionCommand,
+        ITransaction
+      >(new CreateTransactionCommand(user, eventData.eventData));
 
       // TODO: Add your actual transaction processing logic here
       // This could include executing commands via CommandBus
-
+      return;
       this.logger.log(
         {
           ...logContext,

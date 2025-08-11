@@ -10,12 +10,15 @@
 
 // generate-commands
 import { CreateTransactionHandler } from './create/create-transaction.handler';
+import { ProcessTransactionCreateHandler } from './process-create/process-transaction-create.handler';
 import { QueueTransactionHandler } from './queue/queue-transaction.handler';
 // application/commands/index.ts
 export const TransactionCommands = [
   CreateTransactionHandler,
   QueueTransactionHandler,
+  ProcessTransactionCreateHandler, // Ensure this is included if it exists
 ];
 
 export * from './create/create-transaction.command';
+export * from './process-create/process-transaction-create.command';
 export * from './queue/queue-transaction.command';

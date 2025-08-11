@@ -6,6 +6,7 @@
 
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable } from '@nestjs/common';
+import { CommandBus } from '@nestjs/cqrs';
 import { Queue } from 'bullmq';
 import { QUEUE_NAMES } from 'src/shared/infrastructure/bullmq';
 import { EventStoreMetaProps } from 'src/shared/infrastructure/event-store';
@@ -28,6 +29,7 @@ export class TransactionEventHandler {
     private readonly transactionEventProcessor: TransactionEventProcessor,
     @InjectQueue(QUEUE_NAMES.NOTIFICATION)
     private readonly notificationQueue: Queue,
+    private readonly commandBus: CommandBus,
   ) {
     this.logger.log(
       {

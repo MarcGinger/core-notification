@@ -19,6 +19,7 @@ import { TransactionApplicationService } from './application/services';
 import { TransactionUseCases } from './application/usecases';
 import { TransactionExceptionMessage } from './domain/exceptions';
 import { TransactionDomainService } from './domain/services';
+import { TRANSACTION_MESSAGE_QUEUE_TOKEN } from './domain/services/transaction-message-queue.interface';
 import { TransactionApiAdapter } from './infrastructure/adapters';
 import { TransactionController } from './infrastructure/controllers';
 import {
@@ -31,8 +32,7 @@ import {
   TransactionProjectionManager,
 } from './infrastructure/projectors';
 import { TransactionRepository } from './infrastructure/repositories';
-import { TransactionJobDispatcher } from './infrastructure/services';
-import { TransactionMessageQueueService } from './infrastructure/services/transaction-message-queue.service';
+import { TransactionMessageQueueService } from './infrastructure/services';
 
 @Module({
   imports: [
@@ -51,17 +51,10 @@ import { TransactionMessageQueueService } from './infrastructure/services/transa
     // Infrastructure adapters
     TransactionApiAdapter,
 
-    // Job dispatchers
-    TransactionJobDispatcher,
-    {
-      provide: 'ITransactionJobDispatcher',
-      useExisting: TransactionJobDispatcher,
-    },
-
     // Message queue service
     TransactionMessageQueueService,
     {
-      provide: 'ITransactionMessageQueue',
+      provide: TRANSACTION_MESSAGE_QUEUE_TOKEN,
       useExisting: TransactionMessageQueueService,
     },
 
