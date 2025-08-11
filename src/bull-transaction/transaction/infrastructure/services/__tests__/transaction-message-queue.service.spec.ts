@@ -26,13 +26,18 @@ describe('TransactionMessageQueueService', () => {
     mockQueue = {
       add: jest.fn().mockResolvedValue(undefined),
       addBulk: jest.fn().mockResolvedValue(undefined),
+      getJob: jest.fn().mockResolvedValue(null),
+      removeJob: jest.fn().mockResolvedValue(undefined),
       getStats: jest.fn().mockResolvedValue({
         waiting: 0,
         active: 0,
-        completed: 10,
+        completed: 0,
         failed: 0,
         delayed: 0,
       }),
+      pause: jest.fn().mockResolvedValue(undefined),
+      resume: jest.fn().mockResolvedValue(undefined),
+      clean: jest.fn().mockResolvedValue(undefined),
     };
 
     // Create mock queue registry

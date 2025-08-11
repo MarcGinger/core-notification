@@ -20,7 +20,7 @@ import {
   TransactionRefundData,
   TransactionSettlementData,
   TransactionValidationData,
-} from '../../domain/interfaces/transaction-message-queue.interface';
+} from '../../domain/services/transaction-message-queue.interface';
 
 /**
  * Transaction Message Queue Service
