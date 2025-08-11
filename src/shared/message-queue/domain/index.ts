@@ -1,2 +1,2 @@
 export * from './entities';
-export * from './interfaces';
+export * from './interfaces/generic-queue.interface';

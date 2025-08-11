@@ -11,8 +11,8 @@
 // Module exports
 export { GenericMessageQueueModule } from './generic-message-queue.module';
 
-// Configuration exports
-export * from './domain/interfaces';
+// Type exports for clean architecture
+export * from './types';
 
 // Job data type exports
 export * from './infrastructure/job-data';

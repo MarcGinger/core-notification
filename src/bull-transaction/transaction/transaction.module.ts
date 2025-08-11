@@ -12,17 +12,14 @@ import { Module } from '@nestjs/common';
 import { EventStoreSharedModule } from 'src/shared/infrastructure';
 import { BullMQModule } from 'src/shared/infrastructure/bullmq';
 import { LoggerModule } from 'src/shared/logger';
-// import { GenericMessageQueueModule } from 'src/shared/message-queue';
 import { SharedModule } from 'src/shared/shared.module';
 import { GenericMessageQueueModule } from '../../shared/message-queue';
-import { GenericMessageQueueInfraModule } from '../../shared/message-queue/generic-message-queue-infra.module';
 import { TransactionCommands } from './application/commands';
 import { TransactionApplicationService } from './application/services';
 import { TransactionUseCases } from './application/usecases';
 import { TransactionExceptionMessage } from './domain/exceptions';
 import { TransactionDomainService } from './domain/services';
 import { TransactionApiAdapter } from './infrastructure/adapters';
-import { createTransactionEventSubscriptionConfig } from './infrastructure/config/transaction-event-subscription.config';
 import { TransactionController } from './infrastructure/controllers';
 import {
   TransactionEventHandler,
@@ -46,10 +43,7 @@ import { TransactionMessageQueueService } from './infrastructure/services/transa
     EventStoreSharedModule,
     LoggerModule,
     BullMQModule,
-    GenericMessageQueueModule.registerAsync({
-      useFactory: createTransactionEventSubscriptionConfig,
-    }),
-    GenericMessageQueueInfraModule, // Import the new infrastructure module
+    GenericMessageQueueModule, // Provides clean architecture infrastructure
   ],
   controllers: [TransactionController],
   providers: [

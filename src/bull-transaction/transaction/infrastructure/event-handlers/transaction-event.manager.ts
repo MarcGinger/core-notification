@@ -201,7 +201,7 @@ export class TransactionEventSubscriptionManager
     );
 
     try {
-      // Transform the transaction event data to the format expected by MessageQueueEventHandler
+      // Transform the transaction event data for queue processing
       const messageQueueProps: UpdateMessageQueueProps = {
         id: transactionId,
         payload: {

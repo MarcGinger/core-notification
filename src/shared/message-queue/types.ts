@@ -10,7 +10,7 @@
 
 /**
  * Generic Queue Types
- * Provides type-safe job enqueuing across all domains
+ * Provides type-safe job enqueuing across all domains following clean architecture
  */
 
 export interface QueueMeta {
@@ -46,14 +46,5 @@ export type JobEnvelope<T extends JobType = JobType, P = JobPayload> = {
   options?: JobOptions;
 };
 
-/**
- * Queue routing configuration
- */
-export interface QueueRoute {
-  queueName: string;
-  options?: JobOptions;
-}
-
-export interface IMessageRoutingStrategy {
-  resolve(jobType: JobType): QueueRoute;
-}
+// Note: QueueRoute and IMessageRoutingStrategy removed as part of clean architecture migration
+// Domains now own their own queue routing logic without shared strategy interfaces

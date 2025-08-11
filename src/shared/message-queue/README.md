@@ -1,180 +1,204 @@
-# Generic Message Queue System
+# Clean Architecture Message Queue System
 
-A truly generic BullMQ message queue system that can handle any message type (notifications, transactions, Slack messages, emails, etc.) with automatic routing based on message content and metadata.
+A domain-driven BullMQ message queue infrastructure following clean architecture principles. Each domain owns its queue operations directly without shared routing strategies.
 
 ## 🎯 Overview
 
-This system implements a **Strategy Pattern** for routing messages to appropriate queues based on:
+This system provides infrastructure for domain-driven queue operations where:
 
-- **Stream name patterns** (e.g., 'slack-_', 'email-_', 'notification-\*')
-- **Message payload content** (e.g., channel starting with '#', email addresses)
-- **Explicit message types** (e.g., `messageType: 'slack'`)
+- **Domains own their queues** - Each domain registers and manages its own queues
+- **No shared routing** - Domains handle their own message routing logic
+- **Clean boundaries** - Infrastructure is separated from domain logic
+- **Type safety** - Full TypeScript support with generic job envelopes
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────┐
-│    EventStore       │
-│    (Events)         │
+│    Domain Layer     │
+│  (Business Logic)   │
 └──────────┬──────────┘
            │
            ▼
 ┌─────────────────────┐
-│ MessageQueueEvent   │
-│ SubscriptionManager │
+│  Domain Queue       │
+│     Service         │
+│ (Domain-specific)   │
 └──────────┬──────────┘
            │
            ▼
 ┌─────────────────────┐
-│ MessageQueueEvent   │
-│     Handler         │
-│  (Generic Router)   │
-└──────────┬──────────┘
-           │
-    ┌──────┴──────┐
-    │  Strategies │
-    └──────┬──────┘
-           │
-    ┌──────▼──────┐
-    │   BullMQ    │
-    │   Queues    │
-    └─────────────┘
+│   BullMQ Queue      │
+│  Infrastructure     │
+│    (Generic)        │
+└─────────────────────┘
 ```
 
 ## 🚀 Features
 
-- ✅ **Generic Routing** - Automatically routes any message type
-- ✅ **Strategy Pattern** - Easy to extend with new message types
-- ✅ **Priority-based Processing** - Different priorities for different message types
-- ✅ **Scheduled Messages** - Support for delayed message delivery
-- ✅ **Tenant Isolation** - Multi-tenant support with proper user context
+- ✅ **Domain Ownership** - Each domain manages its own queues
+- ✅ **Clean Architecture** - Proper separation of concerns
+- ✅ **Type Safety** - Generic job envelopes with proper typing
+- ✅ **Infrastructure Sharing** - Common BullMQ infrastructure
+- ✅ **Event Store Integration** - EventStore support for event sourcing
+- ✅ **Logging** - Integrated logging infrastructure
 - ✅ **Error Handling** - Comprehensive error handling and retry logic
-- ✅ **Observability** - Detailed logging at each step
-- ✅ **Type Safety** - Full TypeScript support
 
 ## 📁 File Structure
 
 ```
 src/shared/message-queue/
-├── domain/                           # Domain layer
-│   ├── aggregates/                   # Message entities
-│   ├── events/                       # Domain events
+├── domain/
 │   └── properties/                   # Value objects
-├── application/                      # Application layer
-│   ├── commands/                     # CQRS commands
-│   ├── services/                     # Application services
-│   └── usecases/                     # Use cases
-├── infrastructure/                   # Infrastructure layer
-│   ├── event-handlers/              # ⭐ NEW: Generic routing
-│   │   ├── message-queue-event.handler.ts  # Main handler
-│   │   └── message-queue-event.manager.ts  # Subscription manager
-│   ├── repositories/                # Data persistence
-│   └── services/                    # Infrastructure services
-├── generic-message-queue.module.ts  # ⭐ NEW: Module configuration
-├── USAGE_EXAMPLES.md                # ⭐ NEW: Usage examples
-└── README.md                        # ⭐ NEW: This file
+├── infrastructure/
+│   └── job-data/                    # Job data types
+├── types.ts                         # Generic queue types
+├── generic-message-queue.module.ts  # Infrastructure module
+└── index.ts                         # Exports
 ```
-
-## 🎯 Routing Strategies
-
-### 1. SlackMessageStrategy
-
-- **Triggers**: Stream contains 'slack', channel starts with '#' or '@', messageType = 'slack'
-- **Queue**: `SLACK_MESSAGE`
-- **Priority**: Normal
-- **Options**: Immediate processing, 3 attempts
-
-### 2. EmailMessageStrategy
-
-- **Triggers**: Stream contains 'email', payload has 'email' or 'to' field, messageType = 'email'
-- **Queue**: `EMAIL`
-- **Priority**: Normal
-- **Options**: Scheduled processing, 5 attempts
-
-### 3. NotificationStrategy
-
-- **Triggers**: Stream contains 'notification', messageType = 'notification', has notificationType
-- **Queue**: `NOTIFICATION`
-- **Priority**: High
-- **Options**: Immediate processing
-
-### 4. DataProcessingStrategy (Fallback)
-
-- **Triggers**: Always matches if others don't
-- **Queue**: `DATA_PROCESSING`
-- **Priority**: Low
-- **Options**: Scheduled processing
 
 ## 🔧 Usage
 
-### 1. Import the Module
+### 1. Import the Infrastructure Module
 
 ```typescript
 import { GenericMessageQueueModule } from 'src/shared/message-queue';
 
 @Module({
   imports: [
-    GenericMessageQueueModule,
+    GenericMessageQueueModule, // Provides BullMQ, EventStore, and Logger
     // ... other modules
   ],
 })
-export class YourModule {}
+export class YourDomainModule {}
 ```
 
-### 2. Publish Events to EventStore
+### 2. Create Domain-Specific Queue Service
 
 ```typescript
-// Slack message event
-const slackEvent = {
-  id: 'msg-123',
-  payload: {
-    channel: '#general',
-    renderedMessage: 'Hello team!',
-  },
-  correlationId: 'corr-456',
-};
+import { Injectable } from '@nestjs/common';
+import { JobEnvelope, QueueMeta } from 'src/shared/message-queue';
 
-// The system automatically routes to SLACK_MESSAGE queue
-```
-
-### 3. Add Custom Strategy
-
-```typescript
 @Injectable()
-export class SMSMessageStrategy implements IMessageRoutingStrategy {
-  canHandle(
-    eventData: UpdateMessageQueueProps,
-    meta: EventStoreMetaProps,
-  ): boolean {
-    return (
-      eventData.payload?.phoneNumber || eventData.payload?.messageType === 'sms'
-    );
-  }
+export class TransactionQueueService {
+  constructor(
+    private readonly bullMQService: BullMQService,
+    private readonly logger: Logger,
+  ) {}
 
-  getQueueName(): string {
-    return QUEUE_NAMES.SMS_MESSAGE;
-  }
-
-  getJobType(): string {
-    return 'send-sms';
-  }
-
-  getJobOptions(eventData: UpdateMessageQueueProps) {
-    return {
-      ...JOB_OPTIONS_TEMPLATES.IMMEDIATE,
-      priority: QUEUE_PRIORITIES.HIGH,
+  async enqueueTransactionJob<T>(
+    jobType: string,
+    payload: T,
+    meta: QueueMeta,
+    options?: JobOptions,
+  ): Promise<void> {
+    const envelope: JobEnvelope = {
+      type: jobType,
+      payload,
+      meta,
+      options,
     };
-  }
 
-  transformData(eventData: UpdateMessageQueueProps, user: IUserToken) {
-    return {
-      phoneNumber: eventData.payload?.phoneNumber,
-      message: eventData.payload?.renderedMessage,
-      tenant: user.tenant,
-    };
+    await this.bullMQService.addJob('transactions', envelope);
+    this.logger.log(`Enqueued ${jobType} job`, 'TransactionQueueService');
   }
 }
 ```
+
+### 3. Register Domain Queue Handlers
+
+```typescript
+@Injectable()
+export class TransactionJobProcessor {
+  @Process('transactions')
+  async processTransactionJob(job: Job<JobEnvelope>): Promise<void> {
+    const { type, payload, meta } = job.data;
+
+    switch (type) {
+      case 'transaction.settle':
+        await this.handleSettlement(payload, meta);
+        break;
+      case 'transaction.refund':
+        await this.handleRefund(payload, meta);
+        break;
+      default:
+        throw new Error(`Unknown job type: ${type}`);
+    }
+  }
+}
+```
+
+## 📊 Job Envelope Structure
+
+```typescript
+interface JobEnvelope<T = JobType, P = JobPayload> {
+  type: T; // Job type identifier
+  payload: P; // Job-specific data
+  meta: QueueMeta; // Metadata (correlation, tenant, user)
+  options?: JobOptions; // BullMQ options
+}
+
+interface QueueMeta {
+  correlationId: string;
+  tenant?: string;
+  userId?: string;
+  serviceContext?: string;
+}
+```
+
+## 🎯 Best Practices
+
+1. **Domain Ownership**: Each domain should manage its own queues and handlers
+2. **Type Safety**: Use proper TypeScript types for job payloads
+3. **Error Handling**: Implement proper error handling in job processors
+4. **Logging**: Use the provided logger for observability
+5. **Correlation**: Always include correlation IDs for tracing
+6. **Testing**: Write unit tests for queue services and processors
+
+## 🔄 Migration from Legacy
+
+This system replaces the legacy strategy pattern approach:
+
+- ❌ **Old**: Shared routing strategies with complex configuration
+- ✅ **New**: Domain-owned queues with direct management
+- ❌ **Old**: Central message routing through strategy pattern
+- ✅ **New**: Domain-specific queue services and processors
+- ❌ **Old**: Complex configuration files and route mappings
+- ✅ **New**: Simple, direct queue operations within domains
+
+## 📚 Related Documentation
+
+- [Production Message Queue Roadmap](../../../docs/ENHANCED_TEMPLATE_VERSIONING.md)
+- [Clean Architecture Guidelines](../../../docs/architecture.doc.ts)
+- [BullMQ Infrastructure](../../infrastructure/bullmq/README.md)
+  );
+  }
+
+  getQueueName(): string {
+  return QUEUE_NAMES.SMS_MESSAGE;
+  }
+
+  getJobType(): string {
+  return 'send-sms';
+  }
+
+  getJobOptions(eventData: UpdateMessageQueueProps) {
+  return {
+  ...JOB_OPTIONS_TEMPLATES.IMMEDIATE,
+  priority: QUEUE_PRIORITIES.HIGH,
+  };
+  }
+
+  transformData(eventData: UpdateMessageQueueProps, user: IUserToken) {
+  return {
+  phoneNumber: eventData.payload?.phoneNumber,
+  message: eventData.payload?.renderedMessage,
+  tenant: user.tenant,
+  };
+  }
+  }
+
+````
 
 ## 🎮 Testing
 
@@ -191,7 +215,7 @@ describe('SlackMessageStrategy', () => {
     expect(strategy.getQueueName()).toBe(QUEUE_NAMES.SLACK_MESSAGE);
   });
 });
-```
+````
 
 ## 📈 Monitoring
 

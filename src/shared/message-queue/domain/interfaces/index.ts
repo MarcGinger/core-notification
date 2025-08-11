@@ -8,4 +8,5 @@
  * Confidential and proprietary.
  */
 
-export * from './message-queue-event-subscription.config';
+// Clean architecture queue interfaces
+export * from './generic-queue.interface';

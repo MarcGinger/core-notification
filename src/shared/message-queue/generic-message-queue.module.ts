@@ -8,22 +8,16 @@
  * Confidential and proprietary.
  */
 
-import { DynamicModule, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { BullMQModule } from 'src/shared/infrastructure/bullmq';
 import { EventStoreSharedModule } from 'src/shared/infrastructure/event-store';
 import { LoggerModule } from 'src/shared/logger';
-import {
-  MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG,
-  MessageQueueEventSubscriptionConfig,
-} from './domain/interfaces';
-// import {
-//   MessageQueueEventHandler,
-//   MessageQueueEventSubscriptionManager,
-// } from './infrastructure/event-handlers';
 
 /**
  * Generic Message Queue Module
- * Provides routing strategies and event handling for any message type
+ * Provides infrastructure for domain-driven queue operations following clean architecture
+ *
+ * Each domain registers its own queues and handlers directly without shared configuration
  */
 @Module({
   imports: [
@@ -32,53 +26,16 @@ import {
     EventStoreSharedModule, // Provides EventStore integration
   ],
   providers: [
-    // Main event handler that uses strategies
-    // MessageQueueEventHandler,
-    // // Event subscription manager
-    // MessageQueueEventSubscriptionManager,
+    // Infrastructure providers for clean architecture
+    // Domains register their own queue services directly
   ],
   exports: [
-    // Export for use in other modules
-    // MessageQueueEventHandler,
-    // MessageQueueEventSubscriptionManager,
+    BullMQModule, // Export BullMQ for domain modules
+    LoggerModule, // Export logging for domain modules
+    EventStoreSharedModule, // Export EventStore for domain modules
   ],
 })
 export class GenericMessageQueueModule {
-  /**
-   * Register async configuration for event subscriptions
-   */
-  static registerAsync(options: {
-    useFactory: () =>
-      | MessageQueueEventSubscriptionConfig
-      | Promise<MessageQueueEventSubscriptionConfig>;
-    inject?: any[];
-  }): DynamicModule {
-    return {
-      module: GenericMessageQueueModule,
-      imports: [
-        BullMQModule, // Provides queue access
-        LoggerModule, // Provides logging
-        EventStoreSharedModule, // Provides EventStore integration
-      ],
-      providers: [
-        // Configuration provider
-        {
-          provide: MESSAGE_QUEUE_EVENT_SUBSCRIPTION_CONFIG,
-          useFactory: options.useFactory,
-          inject: options.inject || [],
-        },
-
-        // // Main event handler that uses strategies
-        // MessageQueueEventHandler,
-
-        // // Event subscription manager
-        // MessageQueueEventSubscriptionManager,
-      ],
-      exports: [
-        // Export for use in other modules
-        // MessageQueueEventHandler,
-        // MessageQueueEventSubscriptionManager,
-      ],
-    };
-  }
+  // Note: Legacy registerAsync method removed
+  // Domains now register their own queue modules directly
 }

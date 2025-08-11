@@ -34,13 +34,13 @@ Our system follows clean architecture with strict boundaries:
 └──────────┼─────────────────┼─────────────────────┼──────────────┘
            │                 │                     │
            ▼                 ▼                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    INFRASTRUCTURE LAYER                        │
+┌──────────────────────────────────────────────────────────────────┐
+│                    INFRASTRUCTURE LAYER                          │
 │  ┌─────────────────────────────────────────────────────────────┐ │
-│  │              Generic Queue Abstraction                     │ │
-│  │  IGenericQueue<T> → BullMQGenericQueue → Redis/BullMQ     │ │
+│  │              Generic Queue Abstraction                      │ │
+│  │  IGenericQueue<T> → BullMQGenericQueue → Redis/BullMQ       │ │
 │  └─────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 **Key Principles:**
