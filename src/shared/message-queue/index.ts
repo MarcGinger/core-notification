@@ -11,8 +11,16 @@
 // Module exports
 export { GenericMessageQueueModule } from './generic-message-queue.module';
 
-// Type exports for clean architecture
+// Clean architecture types and interfaces
+export * from './domain/interfaces/generic-queue.interface';
 export * from './types';
+
+// Constants for production use
+export * from './domain/constants/priority.constants';
+export * from './domain/constants/queue-names.constants';
+
+// Infrastructure tokens for DI
+export * from './infrastructure/tokens/queue.tokens';
 
 // Job data type exports
 export * from './infrastructure/job-data';
@@ -21,4 +29,4 @@ export * from './infrastructure/job-data';
 export { UpdateMessageQueueProps } from './domain/properties/update-message-queue.model';
 
 // Re-export commonly used constants from infrastructure
-export { QUEUE_NAMES } from '../infrastructure/bullmq';
+// Note: QUEUE_NAMES is already exported from domain/constants above

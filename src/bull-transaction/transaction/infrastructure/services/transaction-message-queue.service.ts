@@ -8,26 +8,26 @@
  * Confidential and proprietary.
  */
 
-import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, Logger } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
+  IGenericQueue,
+  PRIORITY_LEVELS,
   QUEUE_NAMES,
-  QUEUE_PRIORITIES,
-} from 'src/shared/infrastructure/bullmq';
+  QUEUE_TOKENS,
+} from '../../../../shared/message-queue';
 import {
   ITransactionMessageQueue,
   TransactionRefundData,
   TransactionSettlementData,
   TransactionValidationData,
-} from '../../domain/services/transaction-message-queue.interface';
+} from '../../domain/interfaces/transaction-message-queue.interface';
 
 /**
  * Transaction Message Queue Service
- * Infrastructure implementation of the transaction message queue
  *
- * This service implements the domain interface using BullMQ as the underlying
- * queue technology. The domain logic remains unaware of BullMQ specifics.
+ * Domain-specific implementation of transaction queue operations.
+ * Uses the generic queue infrastructure while maintaining domain boundaries.
+ * Follows the production specifications from COPILOT_INSTRUCTIONS.md
  */
 @Injectable()
 export class TransactionMessageQueueService
@@ -36,10 +36,21 @@ export class TransactionMessageQueueService
   private readonly logger = new Logger(TransactionMessageQueueService.name);
 
   constructor(
-    @InjectQueue(QUEUE_NAMES.DATA_PROCESSING)
-    private readonly queue: Queue,
+    @Inject(QUEUE_TOKENS.QUEUE_REGISTRY)
+    private readonly queueRegistry: Map<string, IGenericQueue>,
   ) {
     this.logger.log('TransactionMessageQueueService initialized');
+  }
+
+  /**
+   * Get the transaction processing queue from the registry
+   */
+  private getQueue(): IGenericQueue {
+    const queue = this.queueRegistry.get(QUEUE_NAMES.TRANSACTION_PROCESSING);
+    if (!queue) {
+      throw new Error('Transaction processing queue not found');
+    }
+    return queue;
   }
 
   async enqueueSettlement(
@@ -50,11 +61,11 @@ export class TransactionMessageQueueService
       `Enqueuing settlement for transaction ${data.txId}, amount: ${data.amount} ${data.currency}`,
     );
 
-    await this.queue.add('transaction-settle', data, {
+    await this.getQueue().add('transaction.settlement.v1', data, {
       attempts: 5,
-      priority: QUEUE_PRIORITIES.HIGH,
+      priority: PRIORITY_LEVELS.HIGH,
       backoff: { type: 'exponential', delay: 5000 },
-      jobId: correlationId || data.txId,
+      jobId: correlationId || `settlement-${data.txId}`,
     });
 
     this.logger.log(`Settlement job enqueued for transaction ${data.txId}`);
@@ -68,10 +79,10 @@ export class TransactionMessageQueueService
       `Enqueuing refund for transaction ${data.txId}, reason: ${data.reason}`,
     );
 
-    await this.queue.add('transaction-refund', data, {
+    await this.getQueue().add('transaction.refund.v1', data, {
       attempts: 3,
-      priority: QUEUE_PRIORITIES.NORMAL,
-      jobId: correlationId || data.txId,
+      priority: PRIORITY_LEVELS.HIGH,
+      jobId: correlationId || `refund-${data.txId}`,
     });
 
     this.logger.log(`Refund job enqueued for transaction ${data.txId}`);
@@ -85,10 +96,10 @@ export class TransactionMessageQueueService
       `Enqueuing validation for transaction ${data.txId}, rules: ${data.rules.length}`,
     );
 
-    await this.queue.add('transaction-validate', data, {
+    await this.getQueue().add('transaction.validation.v1', data, {
       attempts: 2,
-      priority: QUEUE_PRIORITIES.NORMAL,
-      jobId: correlationId || data.txId,
+      priority: PRIORITY_LEVELS.NORMAL,
+      jobId: correlationId || `validation-${data.txId}`,
     });
 
     this.logger.log(`Validation job enqueued for transaction ${data.txId}`);
