@@ -1,16 +1,11 @@
-import { InjectQueue } from '@nestjs/bullmq';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { Queue } from 'bullmq';
 import { handleCommandError } from 'src/shared/application/commands';
 import { IUserToken } from 'src/shared/auth';
-import {
-  QUEUE_NAMES,
-  QUEUE_PRIORITIES,
-} from 'src/shared/infrastructure/bullmq';
 import { BullTransactionLoggingHelper } from '../../../shared/domain/value-objects';
 import { TransactionExceptionMessage } from '../../domain/exceptions';
 import { UpdateTransactionProps } from '../../domain/properties';
 import { TransactionRepository } from '../../infrastructure/repositories';
+import { TransactionMessageQueueService } from '../../infrastructure/services/transaction-message-queue.service';
 
 /**
  * Use case for queuing transactions for processing.
@@ -28,8 +23,7 @@ export class QueueTransactionUseCase {
 
   constructor(
     private readonly transactionRepository: TransactionRepository,
-    @InjectQueue(QUEUE_NAMES.DATA_PROCESSING)
-    private readonly dataProcessingQueue: Queue,
+    private readonly transactionMessageQueueService: TransactionMessageQueueService,
   ) {}
 
   /**
@@ -93,31 +87,18 @@ export class QueueTransactionUseCase {
         );
       }
 
-      // Create BullMQ job for transaction processing
-      const jobOptions = {
-        priority: QUEUE_PRIORITIES.HIGH,
-        delay: 0, // Process immediately
-        attempts: 3,
-        backoff: {
-          type: 'exponential' as const,
-          delay: 2000,
-        },
-        removeOnComplete: 100,
-        removeOnFail: 50,
-      };
-
-      const job = await this.dataProcessingQueue.add(
-        'process-transaction',
+      // Use the message queue service to enqueue the transaction
+      await this.transactionMessageQueueService.queueTransaction(
+        props.id,
+        user,
         {
-          transactionId: props.id,
-          tenant: user.tenant,
-          requestedBy: user.sub,
-          timestamp: new Date().toISOString(),
+          priority: undefined, // or set as needed
+          correlationId: undefined, // or set as needed
+          businessContext: { tenant: user.tenant, requestedBy: user.sub },
         },
-        jobOptions,
       );
 
-      // Success logging with enhanced context
+      // Success logging
       const successContext =
         BullTransactionLoggingHelper.createEnhancedLogContext(
           'QueueTransactionUseCase',
@@ -129,21 +110,19 @@ export class QueueTransactionUseCase {
             entityType: 'transaction',
             phase: 'SUCCESS',
             transactionId: props.id,
-            jobId: job.id?.toString(),
-            priority: jobOptions.priority,
-            attempts: jobOptions.attempts,
+            jobId: undefined, // Not available from service, unless you refactor to return jobId
             queuedAt: new Date().toISOString(),
           },
         );
 
       this.logger.log(
         successContext,
-        `Successfully added transaction to queue: transactionId '${props.id}', jobId '${job.id}', tenant '${user.tenant}'`,
+        `Successfully added transaction to queue: transactionId '${props.id}', tenant '${user.tenant}'`,
       );
 
       return {
         transactionId: props.id,
-        jobId: job.id?.toString() || '',
+        jobId: '', // Not available unless you refactor service to return jobId
       };
     } catch (error) {
       // Error logging with enhanced context

@@ -169,4 +169,43 @@ export class TransactionMessageQueueService
 
     this.logger.log(`Validation job enqueued for transaction ${data.txId}`);
   }
+
+  /**
+   * Enqueue a transaction for processing (generic entry point)
+   */
+  async queueTransaction(
+    txId: string,
+    user: IUserToken | SystemUser,
+    options?: {
+      priority?: number;
+      correlationId?: string;
+      businessContext?: any;
+    },
+  ): Promise<void> {
+    const jobCorrelationId = options?.correlationId || `queue-${txId}`;
+    const metadata = this.createJobMetadata(
+      user,
+      jobCorrelationId,
+      options?.businessContext,
+    );
+
+    this.logger.log(
+      `Enqueuing transaction for processing: ${txId}, user: ${user.sub}, priority: ${options?.priority ?? PRIORITY_LEVELS.HIGH}`,
+    );
+
+    await this.getQueue().add(
+      'transaction.process.v1',
+      {
+        txId,
+        metadata,
+      },
+      {
+        attempts: 3,
+        priority: options?.priority ?? PRIORITY_LEVELS.HIGH,
+        jobId: jobCorrelationId,
+      },
+    );
+
+    this.logger.log(`Transaction job enqueued for processing: ${txId}`);
+  }
 }
