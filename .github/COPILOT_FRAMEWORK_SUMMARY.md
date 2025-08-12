@@ -58,8 +58,10 @@ export class Create{{Entity}}UseCase {
     // 2) Optional business rules (decisioning)
     // const { feeMinor } = await this.decisioning.evaluateFees({ amountMinor: data.amountMinor, channel: data.channel });
 
-    // 3) Domain logic (pure)
-    const agg = {{Entity}}.create(data, user);
+    // 3) Domain logic (Result pattern - never throw)
+    const result = {{Entity}}.create(data, user);
+    if (result.isErr()) throw this.ex.throw(result.error.code);
+    const agg = result.value;
 
     // 4) Persist with metadata
     await this.repo.save(agg, {
@@ -132,10 +134,10 @@ export class {{Entity}} extends AggregateRoot {
     super();
   }
 
-  static create(data: Create{{Entity}}Data, user: IUserToken): {{Entity}} {
-    // Domain validation
+  static create(data: Create{{Entity}}Data, user: IUserToken): Result<{{Entity}}, DomainError> {
+    // Domain validation (never throw)
     if (!data.name?.trim()) {
-      throw new ValidationError('Name is required');
+      return Err(new DomainError('name_required', 'Name is required'));
     }
 
     const id = {{Entity}}Id.generate();
@@ -148,7 +150,7 @@ export class {{Entity}} extends AggregateRoot {
       createdAt: entity._createdAt,
     }));
 
-    return entity;
+    return Ok(entity);
   }
 
   // Event handlers
@@ -198,20 +200,20 @@ export class Esdb{{Entity}}Repository extends {{Entity}}RepositoryPort {
   async save(aggregate: {{Entity}}, metadata: EventMetadata): Promise<void> {
     const events = aggregate.getUncommittedEvents().map(event =>
       jsonEvent({
-        type: event.constructor.name,
-        data: event,
+        type: '{{entity}}.created.v1', // Consistent dotted naming
+        data: event.payload,
         metadata: {
           ...metadata,
           eventId: randomUUID(),
-          eventType: event.constructor.name,
-          streamName: `{{entity}}-${aggregate.id.value}`,
+          eventType: '{{entity}}.created.v1',
+          streamName: `{{context}}.{{entity}}-${aggregate.id.value}`,
         },
       })
     );
 
-    const streamName = `{{entity}}-${aggregate.id.value}`;
+    const streamName = `{{context}}.{{entity}}-${aggregate.id.value}`;
     await this.client.appendToStream(streamName, events, {
-      expectedRevision: aggregate.version === 0 ? EXPECTED_VERSION_NO_STREAM : aggregate.version - 1,
+      expectedRevision: aggregate.version === 0 ? NO_STREAM : BigInt(aggregate.version - 1),
     });
 
     aggregate.markEventsAsCommitted();
@@ -219,16 +221,21 @@ export class Esdb{{Entity}}Repository extends {{Entity}}RepositoryPort {
 
   async getById(id: {{Entity}}Id, tenantId: string): Promise<{{Entity}} | null> {
     try {
-      const streamName = `{{entity}}-${id.value}`;
+      const streamName = `{{context}}.{{entity}}-${id.value}`;
       const events = this.client.readStream(streamName);
 
-      const eventData: any[] = [];
-      for await (const event of events) {
-        eventData.push(event.event?.data);
+      const history: DomainEvent[] = [];
+      for await (const { event } of events) {
+        if (!event) continue;
+        history.push({
+          type: event.type,
+          data: event.data,
+          metadata: event.metadata
+        });
       }
 
-      if (eventData.length === 0) return null;
-      return {{Entity}}.fromHistory(eventData);
+      if (history.length === 0) return null;
+      return {{Entity}}.fromHistory(history);
     } catch (error) {
       if (error instanceof StreamNotFoundError) return null;
       throw error;
@@ -262,8 +269,8 @@ export class BullmqOutboxAdapter implements OutboxPort {
       },
       {
         jobId: metadata.idempotencyKey || randomUUID(),
-        removeOnComplete: 100,
-        removeOnFail: 50,
+        removeOnComplete: { age: 86400, count: 1000 }, // Queue hygiene
+        removeOnFail: { age: 604800, count: 50 },
         attempts: 3,
         backoff: { type: 'exponential', delay: 2000 },
       }
@@ -277,21 +284,31 @@ export class BullmqOutboxAdapter implements OutboxPort {
   }
 }
 
-// Worker Template
-@Processor('integration-events')
+// Direct BullMQ v5 Worker (no Nest decorators)
+@Injectable()
 export class {{Entity}}EventWorker {
+  private worker: Worker;
+
   constructor(
     private readonly commandBus: CommandBus,
+    @Inject('REDIS_CONNECTION') private readonly connection: Redis,
     @Inject('ILogger') private readonly logger: ILogger,
-  ) {}
+  ) {
+    this.worker = new Worker('integration-events', this.processJob.bind(this), {
+      connection: this.connection,
+      concurrency: 5,
+    });
+  }
 
-  @Process('{{entity}}.created.v1')
-  async handle{{Entity}}Created(job: Job<{{Entity}}CreatedEventData>): Promise<void> {
+  private async processJob(job: Job<{{Entity}}CreatedEventData>): Promise<void> {
+    if (job.name !== '{{entity}}.created.v1') return;
+
     const { payload, metadata } = job.data;
 
     this.logger.info('job.started', {
       jobId: job.id,
-      eventType: '{{entity}}.created.v1',
+      eventType: job.name,
+      traceId: metadata.traceId,
       correlationId: metadata.correlationId,
       tenantId: metadata.tenantId,
     });
@@ -308,16 +325,23 @@ export class {{Entity}}EventWorker {
 
       this.logger.info('job.completed', {
         jobId: job.id,
+        traceId: metadata.traceId,
         correlationId: metadata.correlationId,
       });
     } catch (error) {
       this.logger.error('job.failed', {
         jobId: job.id,
+        traceId: metadata.traceId,
         correlationId: metadata.correlationId,
         error: error.message,
+        stack: error.stack,
       });
       throw error;
     }
+  }
+
+  async onModuleDestroy() {
+    await this.worker.close();
   }
 }
 ```
@@ -360,8 +384,8 @@ export class {{Context}}Module {}
 
 ### Naming Conventions
 
-- **Streams:** `{entity}-{aggregateId}` (e.g., `payment-uuid`)
-- **Events:** `{Entity}{Action}Event` (e.g., `PaymentCreatedEvent`)
+- **Streams:** `{context}.{entity}-{aggregateId}` (e.g., `payment.order-uuid`)
+- **Events:** `{entity}.{action}.v{version}` (e.g., `payment.created.v1`)
 - **Commands:** `{Action}{Entity}Command` (e.g., `CreatePaymentCommand`)
 - **Redis Keys:** `{service}:{context}:{entity}:{id}:{field}` with tenant prefix
 - **BullMQ Queues:** `{context}-{purpose}` (e.g., `payment-integration`)
@@ -371,6 +395,7 @@ export class {{Context}}Module {}
 ```typescript
 interface EventMetadata {
   correlationId: string;
+  traceId: string; // W3C trace context
   tenantId: string;
   user: IUserToken;
   idempotencyKey?: string;
@@ -380,10 +405,17 @@ interface EventMetadata {
 
 interface StandardMeta {
   correlationId: string;
+  traceId: string; // W3C trace context
   tenantId: string;
   idempotencyKey?: string;
   source: string;
   timestamp: Date;
+}
+
+interface DomainEvent {
+  type: string; // dotted notation: entity.action.version
+  data: any;
+  metadata: any;
 }
 ```
 
@@ -391,6 +423,17 @@ interface StandardMeta {
 
 ```typescript
 // Domain exceptions (never throw raw errors)
+export class DomainError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+    public readonly details?: any,
+  ) {
+    super(message);
+    this.name = 'DomainError';
+  }
+}
+
 export class DomainExceptionFactory {
   constructor(private readonly map: Record<string, IException>) {}
 
@@ -407,8 +450,9 @@ export type Result<T, E extends Error> = Ok<T> | Err<E>;
 ### Logging Standards
 
 ```typescript
-// Structured logging with correlation
+// Structured logging with W3C trace context
 this.logger.info('operation.completed', {
+  traceId: ctx.traceId,
   correlationId: meta.correlationId,
   tenantId: meta.tenantId,
   userId: user.userId,
@@ -418,6 +462,7 @@ this.logger.info('operation.completed', {
 
 // Error enrichment
 this.logger.error('operation.failed', {
+  traceId: ctx.traceId,
   correlationId: meta.correlationId,
   error: error.message,
   stack: error.stack,
@@ -446,7 +491,7 @@ if (!decision.allow) throw this.ex.throw(decision.code ?? 'forbidden');
 ### Testing Patterns
 
 ```typescript
-// UseCase testing template
+// UseCase testing template (Result pattern aligned)
 describe('Create{{Entity}}UseCase', () => {
   let useCase: Create{{Entity}}UseCase;
   let mockRepo: jest.Mocked<{{Entity}}RepositoryPort>;
@@ -461,7 +506,7 @@ describe('Create{{Entity}}UseCase', () => {
     useCase = new Create{{Entity}}UseCase(mockRepo, mockOutbox, mockAuthz, /* ... */);
   });
 
-  it('should create entity when authorized', async () => {
+  it('should create entity when authorized and domain validates', async () => {
     // Arrange
     mockAuthz.authorize.mockResolvedValue({ allow: true, policyRev: '1.0' });
 
@@ -473,12 +518,42 @@ describe('Create{{Entity}}UseCase', () => {
     expect(mockOutbox.enqueue).toHaveBeenCalledWith('entity.created.v1', expect.any(Object), expect.any(Object));
   });
 
-  it('should throw forbidden when denied', async () => {
+  it('should throw forbidden when authorization denied', async () => {
     // Arrange
     mockAuthz.authorize.mockResolvedValue({ allow: false, code: 'insufficient_permissions' });
 
     // Act & Assert
     await expect(useCase.execute(validInput)).rejects.toThrow();
+  });
+
+  it('should throw mapped domain error when validation fails', async () => {
+    // Arrange
+    mockAuthz.authorize.mockResolvedValue({ allow: true, policyRev: '1.0' });
+    const invalidInput = { ...validInput, data: { ...validInput.data, name: '' } };
+
+    // Act & Assert
+    await expect(useCase.execute(invalidInput)).rejects.toThrow();
+  });
+});
+
+// Domain testing (Result pattern)
+describe('{{Entity}} Domain', () => {
+  it('should return Ok when valid data provided', () => {
+    // Act
+    const result = {{Entity}}.create(validData, mockUser);
+
+    // Assert
+    expect(result.isOk()).toBe(true);
+    expect(result.value).toBeInstanceOf({{Entity}});
+  });
+
+  it('should return Err when invalid data provided', () => {
+    // Act
+    const result = {{Entity}}.create(invalidData, mockUser);
+
+    // Assert
+    expect(result.isErr()).toBe(true);
+    expect(result.error.code).toBe('name_required');
   });
 });
 ```
@@ -507,11 +582,13 @@ When generating new entities/features:
 - **Never import infrastructure in domain/application layers**
 - **Always use ports for external dependencies**
 - **Authorization required in every UseCase**
+- **Domain methods return Result<T,E> - never throw**
+- **Application layer maps domain errors via ExceptionFactory**
 - **Metadata attached to all events and outbox messages**
-- **Result<T,E> for all domain methods that can fail**
 - **Structured exceptions via ExceptionFactory**
-- **Correlation IDs in all log messages**
-- **Tenant isolation at every layer**
+- **W3C trace context + correlation IDs in all log messages**
+- **Tenant isolation at every layer (metadata, not stream names)**
+- **Stable idempotency keys for outbox retry safety**
 
 ### Performance Considerations
 
@@ -530,19 +607,19 @@ When generating new entities/features:
 
 ```typescript
 // Domain
-import { AggregateRoot, Result, Ok, Err } from '@shared/domain';
+import { AggregateRoot, Result, Ok, Err, DomainError } from '@shared/domain';
 
 // Application
 import { ICommandHandler, CommandHandler } from '@nestjs/cqrs';
 import { Injectable, Inject } from '@nestjs/common';
 
 // Infrastructure
-import { EventStoreDBClient } from '@eventstore/db-client';
-import { Queue, Job, Processor, Process } from '@nestjs/bullmq';
+import { EventStoreDBClient, NO_STREAM } from '@eventstore/db-client';
+import { Queue, Worker, Job } from 'bullmq'; // Direct v5, not @nestjs/bullmq
 
 // Logging & Observability
 import { ILogger } from '@shared/observability';
-import { correlationId, tenantId } from '@shared/context';
+import { correlationId, traceId, tenantId } from '@shared/context';
 
 // Authorization
 import {
