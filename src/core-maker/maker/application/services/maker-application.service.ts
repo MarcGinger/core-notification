@@ -12,18 +12,19 @@ import { Injectable } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
 import {
+  CreateMakerCommand,
+  PublishBankPaymentRequestedEventCommand,
+  UpdateMakerCommand,
+  UpdateMakerStatusCommand,
+} from '../../application/commands';
+import { ListMakerQuery } from '../../application/queries';
+import { IMaker, MakerStatusEnum } from '../../domain/entities';
+import {
   CreateMakerProps,
   ListMakerPropsOptions,
   MakerPage,
   UpdateMakerProps,
 } from '../../domain/properties';
-import { ListMakerQuery } from '../../application/queries';
-import {
-  CreateMakerCommand,
-  UpdateMakerCommand,
-  UpdateMakerStatusCommand,
-} from '../../application/commands';
-import { IMaker, MakerStatusEnum } from '../../domain/entities';
 
 // generate-api-service
 
@@ -50,6 +51,18 @@ export class MakerApplicationService {
     );
     return entity;
   }
+
+  async publishBankPaymentRequested(
+    user: IUserToken,
+    dto: CreateMakerProps,
+  ): Promise<IMaker> {
+    const entity = await this.commandBus.execute<
+      PublishBankPaymentRequestedEventCommand,
+      IMaker
+    >(new PublishBankPaymentRequestedEventCommand(user, dto));
+    return entity;
+  }
+
   async update(
     user: IUserToken,
     id: string,

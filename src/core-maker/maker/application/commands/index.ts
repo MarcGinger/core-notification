@@ -10,16 +10,19 @@
 
 // generate-commands
 import { CreateMakerHandler } from './create/create-maker.handler';
-import { UpdateMakerHandler } from './update/update-maker.handler';
+import { PublishBankPaymentRequestedEventHandler } from './publish-bank-payment/publish-bank-payment-requested-event.handler';
 import { UpdateMakerStatusHandler } from './update-status/update-maker-status.handler';
+import { UpdateMakerHandler } from './update/update-maker.handler';
 
 // application/commands/index.ts
 export const MakerCommands = [
   CreateMakerHandler,
   UpdateMakerHandler,
   UpdateMakerStatusHandler,
+  PublishBankPaymentRequestedEventHandler,
 ];
 
 export * from './create/create-maker.command';
-export * from './update/update-maker.command';
+export * from './publish-bank-payment/publish-bank-payment-requested-event.command';
 export * from './update-status/update-maker-status.command';
+export * from './update/update-maker.command';

@@ -15,12 +15,10 @@ import { MakerCommands } from './application/commands';
 import { MakerQuery } from './application/queries';
 import { MakerApplicationService } from './application/services';
 import { MakerUseCases } from './application/usecases';
-import { PublishMakerEventUseCase } from './application/usecases/publish-maker-event.usecase';
 import { MakerExceptionMessage } from './domain/exceptions';
 import { MakerDomainService } from './domain/services';
 import { MakerEventConsumer } from './infrastructure/consumers/maker-event.consumer';
 import { MakerController } from './infrastructure/controllers';
-import { MakerEventController } from './infrastructure/controllers/maker-event.controller';
 import {
   MakerMemoryProjection,
   MakerProjectionManager,
@@ -29,7 +27,7 @@ import { MakerRepository } from './infrastructure/repositories';
 
 @Module({
   imports: [EventStoreSharedModule, LoggerModule],
-  controllers: [MakerController, MakerEventController],
+  controllers: [MakerController],
   providers: [
     MakerDomainService,
     MakerRepository,
@@ -53,7 +51,6 @@ import { MakerRepository } from './infrastructure/repositories';
         require('../../shared/integration/adapters/inprocess-bus.adapter')
           .InProcessBus,
     },
-    PublishMakerEventUseCase,
     MakerEventConsumer,
   ],
   exports: [

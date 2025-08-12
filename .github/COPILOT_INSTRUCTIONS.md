@@ -376,5 +376,3 @@ On each integration handler:
 - **Transport:** Actual delivery mechanism (in‑proc, Kafka, etc.).
 
 ---
-
-_This document is the authoritative guide for Copilot suggestions in this codebase. Keep module boundaries clean, publish via the bus, and prefer durable patterns by default._
