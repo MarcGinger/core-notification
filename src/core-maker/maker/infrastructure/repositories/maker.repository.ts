@@ -8,36 +8,36 @@
  * Confidential and proprietary.
  */
 
-import { ILogger } from 'src/shared/logger';
-import { IUserToken } from 'src/shared/auth';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IMaker } from '../../domain/entities';
-import {
-  MakerDomainException,
-  MakerExceptionMessage,
-} from '../../domain/exceptions';
 import { IEvent } from '@nestjs/cqrs';
-import { Maker } from '../../domain/aggregates';
+import { IUserToken } from 'src/shared/auth';
+import { DomainEvent, ISagaContext } from 'src/shared/domain';
 import {
   EventOrchestrationService,
   SnapshotService,
 } from 'src/shared/infrastructure/event-store';
-import { MakerMemoryProjection } from '../projectors';
+import { SagaCommandRepository } from 'src/shared/infrastructure/repositories';
+import { ILogger } from 'src/shared/logger';
+import { IntegrationEvent } from '../../../../shared/integration/integration-event';
+import {
+  CoreMakerLoggingHelper,
+  CoreMakerServiceConstants,
+} from '../../../shared/domain/value-objects';
+import { Maker } from '../../domain/aggregates';
+import { IMaker } from '../../domain/entities';
 import { MakerCreatedEvent, MakerUpdatedEvent } from '../../domain/events';
 import {
-  ListMakerOrderEnum,
+  MakerDomainException,
+  MakerExceptionMessage,
+} from '../../domain/exceptions';
+import {
   ListMakerPropsOptions,
   MakerPage,
   SnapshotMakerProps,
 } from '../../domain/properties';
 import { MakerProjectionKeys } from '../../domain/value-objects/maker-projection-keys';
-import { DomainEvent, ISagaContext } from 'src/shared/domain';
-import { SagaCommandRepository } from 'src/shared/infrastructure/repositories';
-import {
-  CoreMakerLoggingHelper,
-  CoreMakerServiceConstants,
-} from '../../../shared/domain/value-objects';
+import { MakerMemoryProjection } from '../projectors';
 
 const COMPONENT_NAME = 'MakerRepository';
 
@@ -53,11 +53,62 @@ export class MakerRepository extends SagaCommandRepository<
     @Inject('ILogger') protected readonly logger: ILogger,
     private readonly eventOrchestration: EventOrchestrationService,
     private readonly snapshotService: SnapshotService,
-
     @Inject('MakerMemoryProjection')
     private readonly makerProjection: MakerMemoryProjection,
+    @Inject('OutboxRepository')
+    private readonly outboxRepository: any, // Replace 'any' with your OutboxRepository type
   ) {
     super(configService, logger, MakerExceptionMessage, Maker);
+  }
+  /**
+   * Atomically saves domain events to ESDB and integration event to Outbox table.
+   * This method should be called in place of saveMaker when you want Outbox reliability.
+   */
+  async saveMakerWithOutbox(
+    user: IUserToken,
+    aggregate: Maker,
+    event: IntegrationEvent,
+  ): Promise<IMaker> {
+    const tenant = user.tenant;
+    const makerCode = aggregate.getId();
+    const logContext = CoreMakerLoggingHelper.createEnhancedLogContext(
+      COMPONENT_NAME,
+      'saveMakerWithOutbox',
+      makerCode,
+      user,
+    );
+
+    this.logger.debug(
+      logContext,
+      `Saving maker and outbox event: ${makerCode}`,
+    );
+
+    // Begin pseudo-transaction (replace with your DB/ESDB transaction management)
+    try {
+      // Save domain events to ESDB
+      const result = await this.saveMaker(user, aggregate);
+
+      // Save integration event to Outbox table
+      await this.outboxRepository.add(event);
+
+      this.logger.debug(
+        logContext,
+        `Successfully saved maker and outbox event: ${makerCode}`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        {
+          ...logContext,
+          tenant,
+          makerCode,
+          username: user?.preferred_username,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        'Failed to save maker and outbox event',
+      );
+      throw error;
+    }
   }
 
   /**

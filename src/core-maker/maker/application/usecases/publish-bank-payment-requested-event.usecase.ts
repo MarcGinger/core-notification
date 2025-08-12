@@ -68,14 +68,13 @@ export class PublishBankPaymentRequestedEventUseCase {
       const aggregate = await this.domainService.createMaker(user, props);
       const eventsEmitted = aggregate.getUncommittedEvents();
 
-      // Persist the aggregate
-      const result = await this.repository.saveMaker(user, aggregate);
+      // Prepare integration event
       const event: IntegrationEvent = {
         type: 'bank.payment.requested.v1',
         version: 1,
         eventId: crypto.randomUUID(),
         correlationId: `maker-${aggregate.getId()}`,
-        tenant: user.tenant,
+        tenantId: user.tenant,
         idempotencyKey: `maker:${aggregate.getId()}`,
         occurredAt: new Date().toISOString(),
         payload: props,
@@ -88,7 +87,13 @@ export class PublishBankPaymentRequestedEventUseCase {
         },
       };
 
-      await this.integrationBus.publish(event);
+      // Persist aggregate and outbox event atomically
+      const result = await this.repository.saveMakerWithOutbox(
+        user,
+        aggregate,
+        event,
+      );
+
       // Single success log with comprehensive summary
       const successContext = CoreMakerLoggingHelper.createEnhancedLogContext(
         'PublishBankPaymentRequestedEventUseCase',
@@ -107,7 +112,7 @@ export class PublishBankPaymentRequestedEventUseCase {
 
       this.logger.log(
         successContext,
-        `Successfully created maker: ${result.id} [events: ${eventsEmitted.length}]`,
+        `Successfully created maker and persisted outbox event: ${result.id} [events: ${eventsEmitted.length}]`,
       );
 
       return result;

@@ -1,378 +1,457 @@
 # COPILOT_INSTRUCTIONS.md
 
-> **Purpose:** Teach GitHub Copilot how to propose code and patterns that match this repository’s architecture: a **module monolith** using **DDD + CQRS**, **EventStoreDB** for domain persistence, **Outbox** for reliability, optional **Kafka** for inter‑BC messaging, and **BullMQ** for async jobs. The key deliverable is an **Integration Bus abstraction** so modules publish/consume integration events without caring about the transport.
+> A compact playbook so GitHub Copilot (and Copilot Chat) can generate code that fits our stack, patterns, and guardrails—without surprises.
 
 ---
 
-## 1) Golden Rules Copilot Must Follow
+## 1) Purpose
 
-1. **Do not couple modules.** A module writes only **its own domain events** to its **own ESDB streams**. Never write Slack domain events from Banking, etc.
-2. **Use the Integration Bus port** for cross‑module communication. Do not import “other module” services directly.
-3. **Use Outbox** for durable publishing alongside the domain write. If the transport is in‑process now, keep the Outbox contract anyway to allow future Kafka.
-4. **Idempotency is mandatory.** Consumers must dedupe by `idempotencyKey` (often derived from `correlationId + tenantId + logicalKey`).
-5. **Traceability.** Every event includes `eventId`, `correlationId`, `tenantId`, and `occurredAt`. Log these at producer and consumer.
-6. **Config via DI.** Bind the bus with Nest providers (e.g. `InProcessBus` in dev, `OutboxBus` in prod). Never new‑up adapters in business code.
-7. **Separation of event types:**
+This repo uses **NestJS + TypeScript** with **DDD + CQRS + Event Sourcing (EventStoreDB)** and **Redis projections**. We authenticate with **Keycloak** and authorize with **OPA**. Asynchrony is handled with **BullMQ** (jobs) and an **Integration Outbox** (pub to Kafka/webhooks/etc).
 
-   - **Domain events:** private to a module, persisted in that module’s ESDB stream.
-   - **Integration events:** public contracts emitted/consumed across modules via the bus.
+These instructions tell Copilot **what “good” looks like** here: file layout, naming, conventions, examples, and “don’t do this” rules.
 
 ---
 
-## 2) Repo Conventions
+## 2) TL;DR for Copilot
 
-### Language & Runtime
+- **Prefer DDD**: generate Aggregates, Value Objects, Repositories, Use Cases, Handlers. Keep domain pure.
+- **CQRS**: Commands mutate via ESDB events; Queries read **from self** (service’s own projection DB or Redis).
+- **Events are immutable**. Schema changes **bump the version** (`.v2`, `.v3`, …). Never mutate old events.
+- **ESDB metadata** must include: `correlationId`, `tenantId`, `userId`, `source`, `occurredAt`.
+- **Outbox** for integration messages. Use `(sourceStreamId, sourceEventId)` as idempotency fence.
+- **AuthN/AuthZ**: Keycloak for user, OPA for permission checks. Don’t hardcode policy logic.
+- **Tests**: unit tests (domain/use-cases), integration tests for adapters. No network calls in unit tests.
+- **Logs**: Use our `ILogger` abstraction (Pino under the hood). Add correlation IDs to all logs.
+- **Conventional Commits** and **strict linting** apply.
 
-- **TypeScript**, **NestJS**, Node.js **>= 18**.
-- Prefer `async/await`, no callbacks. Keep functions pure where feasible.
+When unsure, **ask for the missing domain inputs** (types, invariants, edge cases) in TODOs at the top of generated files.
 
-### Directory Structure (suggested)
+---
+
+## 3) Stack & Architecture (Context for Copilot)
+
+- **Runtime**: Node.js ≥ 18, NestJS
+- **Patterns**: DDD, CQRS, Event Sourcing (EventStoreDB), read-from-self
+- **Projections**: Per-service DB (SQLite/Postgres/Mongo) or Redis cache (snapshots for fast reads)
+- **Async**: BullMQ for background jobs; Integration Outbox for external publishes
+- **Auth**: Keycloak (AuthN)
+- **AuthZ**: Open Policy Agent (OPA) via HTTP/WASM; policies are externalized
+- **Observability**: Pino logs → (Promtail → Loki → Grafana) \[pipeline varies by env]
+
+---
+
+## 4) Repository Layout (Generate to these places)
 
 ```
 src/
-  shared/
-    integration/
-      integration-event.ts
-      integration-bus.port.ts
-      transports/
-        inprocess-transport.adapter.ts
-        kafka-transport.adapter.ts
-      adapters/
-        inprocess-bus.adapter.ts
-        outbox-bus.adapter.ts
-      dispatcher/
-        outbox-dispatcher.worker.ts
-    outbox/
-      outbox.entity.ts
-      outbox.repository.ts
-  banking-transaction/
+  <bounded-context>/
     application/
-      use-cases/
-      commands/
-      events/        # domain events
-    infrastructure/
-      repositories/
-    presentation/
-  core-slack/
-    application/
-      handlers/      # subscribes to integration events via bus
-      use-cases/
+      commands/ | queries/ | use-cases/ | handlers/
     domain/
-      aggregates/
-      events/        # Slack domain events
+      aggregates/ | entities/ | value-objects/ | events/ | exceptions/ | properties/
+      services/ (pure domain services)
     infrastructure/
-      esdb/
-      queue/         # BullMQ
+      repositories/ | adapters/ | esdb/ | http/ | persistence/
+    interface/
+      controllers/ | dto/ | guards/ | interceptors/
+  shared/
+    auth/ | logger/ | application/ | domain/ | event-store/ | message-queue/ | utils/
+integration-outbox/
+  domain/ | application/ | infrastructure/
 ```
 
-### Naming
-
-- Integration event type: `{namespace}.{entity}.{action}.v{n}`
-
-  - Examples: `notification.requested.v1`, `slack.message.sent.v1`.
-
-- ESDB stream names: `{module}.{entity}-{id}`
-
-  - Examples: `banking.transaction-{txnId}`, `slack.message-{messageId}`.
+**Naming**: `kebab-case` files, `PascalCase` classes, `*.entity.ts` for TypeORM, `*.aggregate.ts` for domain aggregates, `*.event.ts` for events, `*.use-case.ts`, `*.handler.ts`.
 
 ---
 
-## 3) Integration Bus Port & Event Contract
+## 5) API Conventions
 
-Create a stable envelope for integration events and a bus port with pluggable transports.
+**Base routes**
+
+- Banking-style modules: `/api/v1/fintech-banking-product/{domain}/{resource}`
+- Health: `/actuator/{endpoint}`
+- Docs: `/api/docs/{module}`
+
+**DTOs**
+
+- Validate with `class-validator` and `class-transformer`.
+- No domain logic inside DTOs.
+
+**Error shape (example)**
+
+```json
+{
+  "statusCode": 403,
+  "message": "Insufficient permissions for this operation",
+  "error": "Forbidden",
+  "timestamp": "2025-07-23T10:30:00.000Z",
+  "path": "/api/v1/fintech-banking-product/accounts/123456",
+  "security_context": {
+    "policy_violation": "transfer_amount_limit",
+    "required_permission": "approve:large_transfer",
+    "user_permissions": ["read:account", "create:small_transfer"]
+  }
+}
+```
+
+---
+
+## 6) DDD + CQRS Rules
+
+- **Aggregates** own invariants, raise **domain events**, and are reconstructed from ESDB.
+- **Commands** mutate state; **Queries** never mutate.
+- **Use Cases** encapsulate application logic. Handlers delegate to use cases.
+- **Repositories** persist aggregates via ESDB and supply snapshots to speed rebuilds.
+- **Value Objects** are immutable; validate in constructors.
+- **Never** couple controllers directly to repositories or ESDB; go through use cases.
+
+---
+
+## 7) EventStoreDB Rules
+
+**Event naming**: `<category>.<action>.<result?>.v<major>`
+Examples: `payment.requested.v1`, `payment.completed.v1`, `transaction.failed.v1`
+
+**Event metadata (required)**:
 
 ```ts
-// src/shared/integration/integration-event.ts
-export interface IntegrationEvent<T = unknown> {
-  type: string; // e.g. "notification.requested.v1"
-  version: number; // schema version
-  eventId: string; // uuid
-  correlationId?: string;
+interface EventStoreMetaProps {
+  correlationId: string;
   tenantId?: string;
-  idempotencyKey?: string; // producer-provided key for dedupe
+  userId?: string;
+  source: string; // originating service/module
   occurredAt: string; // ISO timestamp
-  payload: T; // typed per event
-  headers?: Record<string, string>;
+  idempotencyKey?: string;
+  headers?: Record<string, any>;
 }
 ```
 
-```ts
-// src/shared/integration/integration-bus.port.ts
-export interface PublishOptions {
-  key?: string; // partition/routing key
-  delayMs?: number; // optional delay
-}
+**Versioning**:
 
-export interface IntegrationBus {
-  publish<T>(event: IntegrationEvent<T>, opts?: PublishOptions): Promise<void>;
-  subscribe(
-    type: string,
-    handler: (evt: IntegrationEvent) => Promise<void>,
-  ): void;
+- Any schema change → **bump version** (`.v2`).
+- Never rewrite old events.
+
+**Snapshots**:
+
+- Keep snapshots lean (latest aggregate state).
+- Rehydrate: `snapshot → events since snapshot`.
+- Store snapshot metadata (version, as-of event number).
+
+---
+
+## 8) Integration Outbox + BullMQ
+
+- **When domain event occurs** → projector maps to **integration outbox row**.
+- Outbox row has unique `(sourceStreamId, sourceEventId)` to enforce idempotency.
+- Dispatcher claims due rows with **SKIP LOCKED** and publishes (Kafka/webhook/etc).
+- Backoff with jitter; dead-letter after `maxAttempts`.
+
+**Minimal outbox shape**
+
+```ts
+{
+  id: string,
+  sourceStreamId: string,
+  sourceEventId: string,
+  correlationId?: string,
+  tenantId?: string,
+  userId?: string,
+  integrationType: string, // e.g., "kafka:payments" | "webhook:partnerX"
+  eventType: string,       // e.g., "payment.completed.v1"
+  payload: Record<string, any>,
+  headers?: Record<string, any>,
+  status: "PENDING" | "CLAIMED" | "SENT" | "FAILED" | "DEAD",
+  dueAt: Date,
+  attempts: number,
+  maxAttempts: number
 }
 ```
 
-### In‑Process Bus (Monolith/Dev)
+**BullMQ**:
+
+- Keep **job payloads** small; reference IDs for heavy data.
+- Use **repeatable jobs** for dispatcher ticks.
+- Job metadata: include `correlationId`, `tenantId`, `userId`, `source`, `timestamp`.
+
+---
+
+## 9) Security & Access
+
+- **AuthN**: Keycloak (bearer tokens/JWT). Controllers extract user context into `IUserToken`.
+- **AuthZ**: OPA policy checks in use cases or guards. **Never** inline business policy logic; **evaluate via OPA**.
+- **Secrets**: Use Doppler (dev) or platform secret manager. **Never** commit secrets.
+- **Input validation**: All external inputs validated at DTO boundary. Extra validation in value objects.
+
+---
+
+## 10) Logging & Observability
+
+- Use `ILogger` abstraction. Always log with:
+
+  - `correlationId`, `tenantId`, `userId`, `source`, `operation`, `phase`
+
+- Log **start** and **end** of use cases, with duration.
+- No PII in logs. Truncate payloads; prefer IDs.
+
+---
+
+## 11) Testing Strategy
+
+- **Unit tests**: Aggregates, value objects, use cases (no network or ESDB).
+- **Integration tests**: repository/adapters with ESDB test container, Redis, DB.
+- **Contract tests**: external integrations (webhooks/Kafka) with mocks or local brokers.
+- **Fixtures**: factory helpers for events, aggregates, JWTs.
+
+---
+
+## 12) Code Style & Tooling
+
+- **ESLint + Prettier**, strict TS config.
+- **Conventional Commits** (`feat:`, `fix:`, `refactor:`, `chore:`, `test:`, `docs:`).
+- **Husky/Commitlint** enabled.
+- Prefer **async/await**, no floating promises.
+- Keep modules small and cohesive.
+
+---
+
+## 13) “Do/Don’t” for Copilot
+
+**Do**
+
+- Generate domain-first code (aggregate + events + use-case + handler).
+- Put infra concerns behind adapters/repositories.
+- Add `TODO:` questions when domain facts are unknown.
+- Use explicit types; narrow unions; never `any`.
+
+**Don’t**
+
+- Don’t leak HTTP, DB, or OPA calls into domain code.
+- Don’t mutate event schemas in place.
+- Don’t add cross-context imports that break boundaries.
+- Don’t invent environment variables or secrets.
+
+---
+
+## 14) Templates (Use These Patterns)
+
+### 14.1 Domain Event
 
 ```ts
-// src/shared/integration/adapters/inprocess-bus.adapter.ts
-import { Subject } from 'rxjs';
-import { IntegrationBus, PublishOptions } from '../integration-bus.port';
-import { IntegrationEvent } from '../integration-event';
+// src/<bc>/domain/events/payment-requested.v1.event.ts
+export class PaymentRequestedV1Event {
+  constructor(
+    public readonly paymentId: string,
+    public readonly amountMinor: number,
+    public readonly currency: string,
+    public readonly fromAccountId: string,
+    public readonly toAccountId: string,
+  ) {}
+}
+```
 
-export class InProcessBus implements IntegrationBus {
-  private readonly subject = new Subject<IntegrationEvent>();
+### 14.2 Aggregate (excerpt)
 
-  async publish(event: IntegrationEvent, _opts?: PublishOptions) {
-    this.subject.next(event);
+```ts
+export class Payment extends AggregateRoot {
+  private constructor(private props: PaymentProps) {
+    super();
   }
 
-  subscribe(type: string, handler: (evt: IntegrationEvent) => Promise<void>) {
-    this.subject.subscribe((e) => {
-      if (e.type === type) void handler(e);
+  static request(props: RequestPaymentProps): Payment {
+    // validate invariants, create value objects
+    const payment = new Payment(/* props */);
+    payment.apply(new PaymentRequestedV1Event(/* fields */));
+    return payment;
+  }
+
+  validateState() {
+    // enforce invariants; throw domain exceptions when violated
+  }
+
+  static fromSnapshot(s: PaymentSnapshot): Payment {
+    return new Payment(/* map snapshot to props */);
+  }
+}
+```
+
+### 14.3 Command + Handler
+
+```ts
+// command
+export class RequestPaymentCommand {
+  constructor(
+    public readonly user: IUserToken,
+    public readonly dto: RequestPaymentDto,
+  ) {}
+}
+
+// handler
+@CommandHandler(RequestPaymentCommand)
+export class RequestPaymentHandler
+  implements ICommandHandler<RequestPaymentCommand>
+{
+  constructor(private readonly useCase: RequestPaymentUseCase) {}
+  async execute(cmd: RequestPaymentCommand) {
+    return this.useCase.execute(cmd.user, cmd.dto);
+  }
+}
+```
+
+### 14.4 Use Case (App Layer)
+
+```ts
+@Injectable()
+export class RequestPaymentUseCase {
+  constructor(
+    private readonly repo: PaymentRepository,
+    @Inject('ILogger') private readonly logger: ILogger,
+    private readonly opa: OpaAuthorizationAdapter,
+  ) {}
+
+  async execute(user: IUserToken, dto: RequestPaymentDto) {
+    const ctx = {
+      correlationId: dto.correlationId,
+      userId: user.id,
+      tenantId: user.tenantId,
+      source: 'PaymentModule',
+    };
+    this.logger.info({ ...ctx, operation: 'REQUEST_PAYMENT', phase: 'START' });
+
+    await this.opa.assert(user, {
+      action: 'payment:request',
+      amountMinor: dto.amountMinor,
+    });
+
+    const aggregate = Payment.request(/* map dto → props */);
+    await this.repo.save(user, aggregate); // emits ESDB events, snapshot as needed
+
+    this.logger.info({ ...ctx, operation: 'REQUEST_PAYMENT', phase: 'END' });
+    return { id: aggregate.id };
+  }
+}
+```
+
+### 14.5 ESDB Repository (excerpt)
+
+```ts
+export class PaymentRepository {
+  constructor(private readonly esdb: EventStoreService) {}
+
+  async save(user: IUserToken, agg: Payment) {
+    const events = agg.getUncommittedEvents().map(e =>
+      serializeDomainEvent(e, {
+        correlationId: /* from user/request */,
+        tenantId: user.tenantId,
+        userId: user.id,
+        source: 'PaymentModule',
+        occurredAt: new Date().toISOString(),
+      })
+    );
+    await this.esdb.appendToStream(agg.streamId, events, /* expectedVersion */);
+    agg.commit();
+  }
+}
+```
+
+### 14.6 Integration Outbox Projector (excerpt)
+
+```ts
+@Injectable()
+export class PaymentOutboxProjector {
+  constructor(private readonly outbox: OutboxRepository) {}
+
+  async onPaymentCompleted(
+    evt: PaymentCompletedV1Event,
+    meta: EventStoreMetaProps,
+  ) {
+    await this.outbox.enqueue({
+      sourceStreamId: meta.streamId,
+      sourceEventId: meta.eventId,
+      correlationId: meta.correlationId,
+      tenantId: meta.tenantId,
+      userId: meta.userId,
+      integrationType: 'kafka:payments',
+      eventType: 'payment.completed.v1',
+      payload: {
+        paymentId: evt.paymentId,
+        amountMinor: evt.amountMinor,
+        currency: evt.currency,
+      },
+      headers: { idempotencyKey: meta.eventId },
     });
   }
 }
 ```
 
-### Outbox Bus (Durable Publishing)
+---
 
-```ts
-// src/shared/integration/adapters/outbox-bus.adapter.ts
-import { IntegrationBus, PublishOptions } from '../integration-bus.port';
-import { IntegrationEvent } from '../integration-event';
-import { OutboxRepository } from '../../outbox/outbox.repository';
+## 15) Example Copilot Prompts (Paste into Copilot Chat)
 
-export class OutboxBus implements IntegrationBus {
-  constructor(private readonly repo: OutboxRepository) {}
-
-  async publish(event: IntegrationEvent, opts?: PublishOptions): Promise<void> {
-    await this.repo.add(event, opts); // must be saved within the same Tx as the domain change
-  }
-
-  subscribe(): void {
-    /* Not used here. Subscriptions handled by transport/consumers. */
-  }
-}
-```
-
-> The **dispatcher** reads `outbox` rows and forwards to the configured **Transport**:
-
-```ts
-// src/shared/integration/transports/transport.port.ts
-import { IntegrationEvent } from '../integration-event';
-import { PublishOptions } from '../integration-bus.port';
-
-export interface Transport {
-  send(event: IntegrationEvent, opts?: PublishOptions): Promise<void>;
-}
-```
+- “Generate a **PaymentRequested** aggregate with `request()` factory, `validateState()`, events `payment.requested.v1` and `payment.failed.v1`. Include value objects for `Money` and `AccountId`. Add unit tests.”
+- “Create a **RequestPaymentUseCase** and **RequestPaymentHandler** that saves to ESDB via `PaymentRepository`, logs start/end with correlationId, and checks OPA `payment:request`.”
+- “Add an **Outbox projector** mapping `payment.completed.v1` → `kafka:payments` outbox row. Include idempotency via `(sourceStreamId, sourceEventId)`.”
+- “Scaffold a NestJS **controller** `POST /payments` calling the `RequestPaymentCommand`, validating DTO with class-validator, returning `201` with `{ id }`.”
+- “Write **unit tests** for `Money` value object (invalid currency, negative amount) and `Payment.request()` (invariants).”
+- “Refactor existing handler to **delegate to use case** and remove infra details from domain.”
 
 ---
 
-## 4) Banking → Slack Example (What Copilot Should Generate)
+## 16) Commit & PR Guidelines
 
-**Producer (Banking):** On transaction failure, publish a notification request.
+- **Conventional Commits**: `feat:`, `fix:`, `refactor:`, `chore:`, `test:`, `docs:`
+- **PR checklist**:
 
-```ts
-// banking-transaction/application/use-cases/notify-on-failure.usecase.ts
-await this.integrationBus.publish(
-  {
-    type: 'notification.requested.v1',
-    version: 1,
-    eventId: crypto.randomUUID(),
-    correlationId,
-    tenantId,
-    idempotencyKey: `txn:${txnId}:slack:${templateCode}`,
-    occurredAt: new Date().toISOString(),
-    payload: {
-      channel: 'slack',
-      configCode: 'alerts',
-      templateCode: 'txn-failed',
-      data: { txnId, amount, reason },
-    },
-  },
-  { key: tenantId ?? 'default' },
-);
-```
-
-**Consumer (Core‑Slack):** Subscribe, persist Slack domain events, enqueue job.
-
-```ts
-// core-slack/application/handlers/notification-requested.handler.ts
-this.integrationBus.subscribe('notification.requested.v1', async (evt) => {
-  if (evt.payload?.channel !== 'slack') return;
-
-  // 1) Persist SlackMessageRequested.v1 in Slack ESDB
-  await this.slackMessageRepo.appendRequested({
-    messageId: this.idGen(),
-    correlationId: evt.correlationId,
-    tenantId: evt.tenantId,
-    templateCode: evt.payload.templateCode,
-    payload: evt.payload.data,
-    occurredAt: evt.occurredAt,
-  });
-
-  // 2) Enqueue BullMQ job (idempotent by idempotencyKey)
-  await this.queue.add('send-slack', {
-    idempotencyKey: evt.idempotencyKey,
-    messagePayload: evt.payload,
-  });
-});
-```
-
-**Worker:** render + call Slack API; append `Sent`/`Failed` events.
-
-```ts
-// core-slack/infrastructure/queue/slack.worker.ts
-try {
-  const result = await this.slackApi.chatPostMessage(rendered);
-  await this.slackMessageRepo.appendSent({ messageId, ts: result.ts });
-} catch (err) {
-  await this.slackMessageRepo.appendFailed({ messageId, reason: String(err) });
-  // retry per policy/backoff; DLQ on max attempts
-}
-```
+  - [ ] Domain invariants covered
+  - [ ] ESDB event names & versions correct
+  - [ ] Metadata present (correlation/tenant/user/source)
+  - [ ] Outbox / jobs idempotent
+  - [ ] DTOs validated; no domain logic in controllers
+  - [ ] Tests added/updated; pass locally
+  - [ ] Logs include correlationId
 
 ---
 
-## 5) Mermaid: End‑to‑End Flow (for docs and PRs)
+## 17) Environment & Secrets
 
-```mermaid
-sequenceDiagram
-  autonumber
-  participant BT as Bank-Transaction
-  participant ESDB_B as ESDB (Banking)
-  participant OUT as Outbox (Banking)
-  participant BUS as Integration Bus
-  participant CS as Core-Slack
-  participant ESDB_S as ESDB (Slack)
-  participant Q as BullMQ
-  participant API as Slack API
-
-  BT->>ESDB_B: BankTransactionFailed.v1 (own stream)
-  BT->>OUT: Insert notification.requested.v1 (same DB Tx)
-  OUT-->>BUS: Dispatch via transport (in-proc or Kafka)
-  BUS-->>CS: Deliver notification.requested.v1
-  CS->>ESDB_S: SlackMessageRequested.v1 (own stream)
-  CS->>Q: Enqueue send-slack job
-  Q->>API: chat.postMessage
-  API-->>CS: 200 or Error
-  alt success
-    CS->>ESDB_S: SlackMessageSent.v1
-  else failure
-    CS->>ESDB_S: SlackMessageFailed.v1 + retry/backoff
-  end
-```
+- Use **Doppler** (dev) or platform secret manager.
+- Do not hardcode tokens/URLs. For Slack, Kafka, webhooks, etc., read from config service.
 
 ---
 
-## 6) Wiring in NestJS (Examples Copilot Should Propose)
+## 18) Performance & Resilience
 
-```ts
-// src/shared/integration/integration.module.ts
-import { Module } from '@nestjs/common';
-import { InProcessBus } from './adapters/inprocess-bus.adapter';
-
-@Module({
-  providers: [
-    { provide: 'IntegrationBus', useClass: InProcessBus }, // swap to OutboxBus in prod
-  ],
-  exports: ['IntegrationBus'],
-})
-export class IntegrationModule {}
-```
-
-```ts
-// banking-transaction/banking-transaction.module.ts
-@Module({
-  imports: [IntegrationModule],
-  providers: [NotifyOnFailureUseCase],
-})
-export class BankingTransactionModule {}
-```
-
-```ts
-// core-slack/core-slack.module.ts
-@Module({
-  imports: [IntegrationModule],
-  providers: [NotificationRequestedHandler, SlackQueue, SlackMessageRepository],
-})
-export class CoreSlackModule {}
-```
+- Keep aggregates **small**; avoid chatty write models.
+- Snapshots for hot aggregates; cap rebuild time.
+- Backoff with jitter for outbox & jobs; dead-letter responsibly.
+- Avoid N+1 calls in projections and queries.
 
 ---
 
-## 7) Outbox Details Copilot Must Respect
+## 19) What to Ask When Context Is Missing (Copilot TODOs)
 
-- **Atomicity:** Insert outbox rows in the **same transaction** as the domain change.
-- **Dispatcher:** Runs out‑of‑band (BullMQ/cron). Reads undelivered rows → `transport.send()` → marks delivered; exponential backoff on transient errors.
-- **Schema:**
-
-  - `outbox(id, type, payload, headers, occurred_at, idempotency_key, tenant_id, correlation_id, status, attempts)`
-
-- **Idempotent send:** Transport should protect against duplicates (e.g., Kafka producer with a deterministic key).
+- **Domain**: invariant list, failure modes, currency rules, tenancy boundaries.
+- **AuthZ**: exact OPA policy inputs/outputs.
+- **Events**: schema fields, version bumps, migration strategy for readers.
+- **Integrations**: target channel (`kafka:*`, `webhook:*`), retry policy, idempotency keys.
 
 ---
 
-## 8) Consumer Idempotency Pattern
+## 20) Quick Reference Snippets
 
-On each integration handler:
+**Event name examples**
 
-- Compute a **dedupe key** = `evt.idempotencyKey || evt.eventId` + `tenantId`.
-- Check a **processed table/cache** before acting. If already processed → **return**.
-- After successful side‑effects, **record** the key with a TTL (or forever for critical actions).
+- `transaction.created.v1`
+- `transaction.failed.v1`
+- `account.holder-updated.v2`
 
----
+**Endpoint patterns**
 
-## 9) Observability & Logging
-
-- Always log: `eventId`, `correlationId`, `tenantId`, `type`, `attempt`, and the worker/job id.
-- Propagate `correlationId` to downstream logs (HTTP headers, job data, event metadata).
-
----
-
-## 10) Security & Data Hygiene
-
-- Never place secrets/tokens in event payloads.
-- Respect tenant isolation; include `tenantId` in topic keys/partitions.
-- Keep payloads **minimal** (templateCode + data). Heavy rendering happens in the consumer.
+- `/api/v1/fintech-banking-product/{domain}/{resource}`
+- `/actuator/health`
+- `/api/docs/{module}`
 
 ---
 
-## 11) What **Not** To Do (Copilot, please avoid)
+### Final note
 
-- ❌ Banking writing directly to Slack ESDB.
-- ❌ Calling Slack API from the Banking module.
-- ❌ Bypassing the bus by importing another module’s services.
-- ❌ Emitting integration events **without** Outbox (unless explicitly in in‑memory dev mode).
-
----
-
-## 12) Quick Prompts (to steer Copilot)
-
-- “Generate a NestJS `IntegrationBus` port and an `InProcessBus` adapter using RxJS Subject.”
-- “Create an `OutboxRepository` with `add()`, `markSent()` and a BullMQ dispatcher that calls a `Transport` port.”
-- “Write a handler in `core-slack` that subscribes to `notification.requested.v1`, persists `SlackMessageRequested.v1`, and enqueues a BullMQ job.”
-- “Add idempotency to the consumer using a repository `hasProcessed(key)` and `markProcessed(key)`.”
-
----
-
-## 13) PR Acceptance Checklist
-
-- [ ] Producer publishes via `IntegrationBus` (no direct coupling).
-- [ ] Outbox row is written in the same Tx as the domain event/state change.
-- [ ] Consumer is idempotent by key and logs correlation fields.
-- [ ] ESDB writes stay within module boundaries.
-- [ ] Tests cover happy path + duplicate delivery + transient transport error.
-
----
-
-## 14) Glossary
-
-- **Domain event:** Internal, persisted in module ESDB; not a cross‑module contract.
-- **Integration event:** Public contract carried by the Integration Bus.
-- **Outbox:** Durable buffer table to ensure at‑least‑once delivery out of a DB transaction.
-- **Transport:** Actual delivery mechanism (in‑proc, Kafka, etc.).
-
----
+Copilot: **opt for explicitness over cleverness**. If unsure, generate a clean skeleton with top-of-file `TODO:` questions. We will fill them in.

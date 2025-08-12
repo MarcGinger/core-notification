@@ -11,6 +11,7 @@
 import { Module } from '@nestjs/common';
 import { EventStoreSharedModule } from 'src/shared/infrastructure';
 import { LoggerModule } from 'src/shared/logger';
+import { OutboxRepository } from '../../shared/outbox/outbox.repository';
 import { MakerCommands } from './application/commands';
 import { MakerQuery } from './application/queries';
 import { MakerApplicationService } from './application/services';
@@ -52,6 +53,12 @@ import { MakerRepository } from './infrastructure/repositories';
           .InProcessBus,
     },
     MakerEventConsumer,
+
+    OutboxRepository,
+    {
+      provide: 'OutboxRepository',
+      useExisting: OutboxRepository,
+    },
   ],
   exports: [
     MakerRepository,
@@ -59,6 +66,9 @@ import { MakerRepository } from './infrastructure/repositories';
     MakerProjectionManager,
     'MakerMemoryProjection',
     'IntegrationBus',
+
+    OutboxRepository,
+    'OutboxRepository',
   ],
 })
 export class MakerModule {}

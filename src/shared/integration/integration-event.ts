@@ -18,7 +18,7 @@ export interface IntegrationEvent<T = unknown> {
   /** Correlates events across systems (traceability) */
   correlationId?: string;
   /** Tenant identifier for multi-tenancy */
-  tenant?: string;
+  tenantId?: string;
   /** Idempotency key for deduplication (producer-provided) */
   idempotencyKey?: string;
   /** ISO8601 timestamp when event occurred */
