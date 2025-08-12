@@ -568,6 +568,7 @@ export class MakerRepository extends SagaCommandRepository<
         from: storedMaker.from,
         to: storedMaker.to,
         description: storedMaker.description,
+        amount: storedMaker.amount,
         status: storedMaker.status,
         scheduledAt: storedMaker.scheduledAt,
         correlationId: storedMaker.correlationId,

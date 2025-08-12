@@ -21,6 +21,10 @@ export function makerEquals(
     a.from === b.from &&
     a.to === b.to &&
     a.description === b.description &&
+    (a.amount === b.amount ||
+      (a.amount instanceof Date &&
+        b.amount instanceof Date &&
+        a.amount.getTime() === b.amount.getTime())) &&
     a.status === b.status &&
     (a.scheduledAt === b.scheduledAt ||
       (a.scheduledAt instanceof Date &&
@@ -43,8 +47,8 @@ export function validateMaker(input: IMaker | string): IMaker {
   if (obj.to === undefined || obj.to === null) {
     throw new MakerDomainException(MakerExceptionMessage.requiredTo);
   }
-  if (obj.status === undefined || obj.status === null) {
-    throw new MakerDomainException(MakerExceptionMessage.requiredStatus);
+  if (obj.amount === undefined || obj.amount === null) {
+    throw new MakerDomainException(MakerExceptionMessage.requiredAmount);
   }
   // No relationships to normalize, return input as is
   return obj;

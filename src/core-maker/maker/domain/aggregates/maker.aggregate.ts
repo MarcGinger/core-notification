@@ -22,7 +22,8 @@ export class Maker extends AggregateRoot implements IAggregateWithDto<IMaker> {
   private _from: string;
   private _to: string;
   private _description?: string;
-  private _status: MakerStatusEnum;
+  private _amount: Date;
+  private _status?: MakerStatusEnum;
   private _scheduledAt?: Date;
   private _correlationId?: string;
 
@@ -32,6 +33,7 @@ export class Maker extends AggregateRoot implements IAggregateWithDto<IMaker> {
     this._from = props.from;
     this._to = props.to;
     this._description = props.description;
+    this._amount = props.amount;
     this._status = props.status;
     this._scheduledAt = props.scheduledAt;
     this._correlationId = props.correlationId;
@@ -58,7 +60,11 @@ export class Maker extends AggregateRoot implements IAggregateWithDto<IMaker> {
     return this._description;
   }
 
-  public get status(): MakerStatusEnum {
+  public get amount(): Date {
+    return this._amount;
+  }
+
+  public get status(): MakerStatusEnum | undefined {
     return this._status;
   }
 
@@ -82,6 +88,7 @@ export class Maker extends AggregateRoot implements IAggregateWithDto<IMaker> {
       from: entity.from,
       to: entity.to,
       description: entity.description,
+      amount: entity.amount,
       status: entity.status,
       scheduledAt: entity.scheduledAt,
       correlationId: entity.correlationId,
@@ -96,6 +103,7 @@ export class Maker extends AggregateRoot implements IAggregateWithDto<IMaker> {
       from: this._from,
       to: this._to,
       description: this._description,
+      amount: this._amount,
       status: this._status,
       scheduledAt: this._scheduledAt,
       correlationId: this._correlationId,
@@ -217,6 +225,34 @@ export class Maker extends AggregateRoot implements IAggregateWithDto<IMaker> {
   }
 
   /**
+   * Updates the Amount property of the maker.
+   * Business rules:
+   * - Value is required and cannot be empty
+   * - Emits MakerUpdatedEvent on successful change
+   * @param user - The user performing the operation
+   * @param amount - The new Amount value
+   * @param emitEvent - Whether to emit domain events (default: true)
+   * @throws {MakerDomainException} When validation fails or business rules are violated
+   */
+  public updateAmount(user: IUserToken, amount: Date, emitEvent = true): void {
+    // Validate user context
+    if (!user) {
+      throw new MakerDomainException(
+        MakerExceptionMessage.userRequiredForUpdates,
+      );
+    }
+
+    const oldAmount = this._amount;
+    this._amount = amount;
+
+    // Emit event only if value actually changed
+    if (oldAmount !== this._amount && emitEvent) {
+      this.validateState();
+      this.apply(new MakerUpdatedEvent(user, this.getId(), this.toDto()));
+    }
+  }
+
+  /**
    * Updates the Scheduled at property of the maker.
    * Business rules:
    * - Value is optional
@@ -327,8 +363,8 @@ export class Maker extends AggregateRoot implements IAggregateWithDto<IMaker> {
       throw new MakerDomainException(MakerExceptionMessage.fieldToRequired);
     }
 
-    if (!this._status) {
-      throw new MakerDomainException(MakerExceptionMessage.fieldStatusRequired);
+    if (!this._amount) {
+      throw new MakerDomainException(MakerExceptionMessage.fieldAmountRequired);
     }
   }
 
@@ -338,6 +374,7 @@ export class Maker extends AggregateRoot implements IAggregateWithDto<IMaker> {
       from: this._from,
       to: this._to,
       description: this._description,
+      amount: this._amount,
       status: this._status,
       scheduledAt: this._scheduledAt,
       correlationId: this._correlationId,

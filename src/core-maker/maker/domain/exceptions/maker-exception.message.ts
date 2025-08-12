@@ -99,10 +99,10 @@ export const MakerExceptionMessage: Record<string, IException> = {
     statusCode: 400,
     domain: `true`,
   },
-  fieldStatusRequired: {
-    message: `Status is required`,
-    description: `The status field is required for Maker`,
-    code: `INVALID_STATUS_VALUE`,
+  fieldAmountRequired: {
+    message: `Amount is required`,
+    description: `The amount field is required for Maker`,
+    code: `INVALID_AMOUNT_VALUE`,
     exception: `MakerDomainException`,
     statusCode: 400,
     domain: `true`,
@@ -171,10 +171,10 @@ export const MakerExceptionMessage: Record<string, IException> = {
     statusCode: 400,
     domain: `true`,
   },
-  requiredStatus: {
-    message: `Status is required and cannot be null or undefined`,
-    description: `This error occurs when validating a Maker and the required field status is missing or null.`,
-    code: `REQUIRED_STATUS_FOR_MAKER`,
+  requiredAmount: {
+    message: `Amount is required and cannot be null or undefined`,
+    description: `This error occurs when validating a Maker and the required field amount is missing or null.`,
+    code: `REQUIRED_AMOUNT_FOR_MAKER`,
     exception: `MakerDomainException`,
     statusCode: 400,
     domain: `true`,

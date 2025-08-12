@@ -208,6 +208,12 @@ export class UpdateMakerUseCase {
       });
     }
 
+    if (props.amount !== undefined) {
+      const oldValue = aggregate.amount;
+      aggregate.updateAmount(user, props.amount);
+      changes.push({ field: 'amount', oldValue, newValue: props.amount });
+    }
+
     if (props.scheduledAt !== undefined) {
       const oldValue = aggregate.scheduledAt;
       aggregate.updateScheduledAt(user, props.scheduledAt);

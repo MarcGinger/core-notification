@@ -61,6 +61,7 @@ export class MakerDomainService {
       from: createData.from,
       to: createData.to,
       description: createData.description,
+      amount: createData.amount,
       status: createData.status,
       scheduledAt: createData.scheduledAt,
       correlationId: createData.correlationId,
@@ -109,6 +110,10 @@ export class MakerDomainService {
 
     if (updateData.description !== undefined) {
       maker.updateDescription(user, updateData.description);
+    }
+
+    if (updateData.amount !== undefined) {
+      maker.updateAmount(user, updateData.amount);
     }
 
     if (updateData.status !== undefined) {

@@ -54,7 +54,8 @@
         "description": {},
         "status": {},
         "scheduled_at": {},
-        "correlation_id": {}
+        "correlation_id": {},
+        "amount": {}
       }
     }
   },

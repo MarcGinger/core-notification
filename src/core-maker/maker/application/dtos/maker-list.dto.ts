@@ -19,6 +19,7 @@ import {
 } from '../../domain/properties';
 import { MakerStatusEnum } from '../../domain/entities';
 import {
+  ApiMakerAmount,
   ApiMakerCorrelationId,
   ApiMakerDescription,
   ApiMakerFrom,
@@ -47,8 +48,11 @@ export class MakerListResponse implements ListMakerProps {
   @ApiMakerDescription()
   readonly description?: string;
 
-  @ApiMakerStatus({ required: true })
-  readonly status: MakerStatusEnum;
+  @ApiMakerAmount({ required: true })
+  readonly amount: Date;
+
+  @ApiMakerStatus()
+  readonly status?: MakerStatusEnum;
 
   @ApiMakerScheduledAt()
   readonly scheduledAt?: Date;

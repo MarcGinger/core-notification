@@ -11,6 +11,7 @@
 import { UpdateMakerProps } from '../../domain/properties';
 import { MakerStatusEnum } from '../../domain/entities';
 import {
+  ApiMakerAmount,
   ApiMakerCorrelationId,
   ApiMakerDescription,
   ApiMakerFrom,
@@ -32,7 +33,10 @@ export class MakerUpdateRequest implements UpdateMakerProps {
   @ApiMakerDescription()
   readonly description?: string;
 
-  @ApiMakerStatus({ required: false })
+  @ApiMakerAmount({ required: false })
+  readonly amount?: Date;
+
+  @ApiMakerStatus()
   readonly status?: MakerStatusEnum;
 
   @ApiMakerScheduledAt()

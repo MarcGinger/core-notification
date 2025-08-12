@@ -17,7 +17,8 @@ export interface MakerProps {
   readonly from: string;
   readonly to: string;
   readonly description?: string;
-  readonly status: MakerStatusEnum;
+  readonly amount: Date;
+  readonly status?: MakerStatusEnum;
   readonly scheduledAt?: Date;
   readonly correlationId?: string;
 }

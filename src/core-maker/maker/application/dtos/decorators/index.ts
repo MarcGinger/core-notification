@@ -8,6 +8,7 @@
  * Confidential and proprietary.
  */
 
+export * from './amount.decorator';
 export * from './correlation-id.decorator';
 export * from './description.decorator';
 export * from './from.decorator';

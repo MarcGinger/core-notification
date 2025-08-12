@@ -10,22 +10,28 @@
 
 import { applyDecorators } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsOptional } from 'class-validator';
-import { MakerStatusEnum } from '../../../domain/entities';
+import { IsNotEmpty, IsOptional } from 'class-validator';
 
 /**
- * Property decorator for Status
+ * Options for property decorators
+ */
+interface PropOptions {
+  required?: boolean;
+}
+/**
+ * Property decorator for Amount with required option
+ * @param {Object} options - Options for the decorator
  * @returns {PropertyDecorator}
  */
-export function ApiMakerStatus() {
+export function ApiMakerAmount(options: PropOptions = {}) {
+  const { required = true } = options;
   return applyDecorators(
     ApiProperty({
       description: ``,
       type: String,
-      enum: MakerStatusEnum,
-      required: false,
+      format: 'date-time',
+      required,
     }),
-    IsEnum(MakerStatusEnum),
-    IsOptional(),
+    required ? IsNotEmpty() : IsOptional(),
   );
 }
