@@ -11,5 +11,5 @@
 import { MakerDomainEvent } from './maker-domain.event';
 
 export class MakerCreatedEvent extends MakerDomainEvent {
-  readonly eventType = 'maker.created.v1';
+  readonly eventType = 'transaction.created.v1';
 }

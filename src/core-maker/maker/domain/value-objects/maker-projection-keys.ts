@@ -27,7 +27,7 @@ export class MakerProjectionKeys {
    * Format: core-maker.maker.v1
    */
   static getEventStoreStreamPrefix(): string {
-    return `${this.ESDB_BOUNDED_CONTEXT}.${this.ESDB_AGGREGATE_NAME}.${this.ESDB_VERSION}`;
+    return `bullTransaction.transaction.v1`;
   }
 
   /**

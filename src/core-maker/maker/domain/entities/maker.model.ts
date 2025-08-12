@@ -9,11 +9,29 @@
  */
 
 export enum MakerStatusEnum {
-  PENDING = 'pending',
-  SENT = 'sent',
-  FAILED = 'failed',
-  SCHEDULED = 'scheduled',
-  RETRYING = 'retrying',
+  /** Transaction has been created but not yet queued for processing */
+  CREATED = 'CREATED',
+
+  /** Transaction has been queued for processing */
+  PENDING = 'PENDING',
+
+  /** Transaction is currently being processed */
+  PROCESSING = 'PROCESSING',
+
+  /** Transaction has been successfully completed */
+  SUCCESS = 'SUCCESS',
+
+  /** Transaction has failed and will not be retried */
+  FAILED = 'FAILED',
+
+  /** Transaction has failed but is scheduled for retry */
+  RETRYING = 'RETRYING',
+
+  /** Transaction is scheduled for future processing */
+  SCHEDULED = 'SCHEDULED',
+
+  /** Transaction has been cancelled by user */
+  CANCELLED = 'CANCELLED',
 }
 
 export interface IMaker {

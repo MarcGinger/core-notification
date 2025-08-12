@@ -9,9 +9,10 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { IUserToken } from 'src/shared/auth';
 import { randomUUID } from 'crypto';
+import { IUserToken } from 'src/shared/auth';
 import { Maker } from '../aggregates';
+import { MakerStatusEnum } from '../entities';
 import { CreateMakerProps, UpdateMakerProps } from '../properties';
 import { MakerIdentifier } from '../value-objects';
 
@@ -62,7 +63,7 @@ export class MakerDomainService {
       to: createData.to,
       description: createData.description,
       amount: createData.amount,
-      status: createData.status,
+      status: MakerStatusEnum.CREATED,
       scheduledAt: createData.scheduledAt,
       correlationId: createData.correlationId,
     });
