@@ -9,9 +9,7 @@
  */
 
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { handleCommandError } from 'src/shared/application/commands';
 import { ITransaction } from '../../../domain/entities';
-import { TransactionExceptionMessage } from '../../../domain/exceptions';
 import { CreateTransactionUseCase } from '../../usecases';
 import { CreateTransactionCommand } from './create-transaction.command';
 @CommandHandler(CreateTransactionCommand)
@@ -24,11 +22,6 @@ export class CreateTransactionHandler
 
   async execute(command: CreateTransactionCommand): Promise<ITransaction> {
     const { user, props } = command;
-    try {
-      return await this.transactionCreateUseCase.execute(user, props);
-    } catch (error) {
-      handleCommandError(error, null, TransactionExceptionMessage.createError);
-      throw error;
-    }
+    return await this.transactionCreateUseCase.execute(user, props);
   }
 }

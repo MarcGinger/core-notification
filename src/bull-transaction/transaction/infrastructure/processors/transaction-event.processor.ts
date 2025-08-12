@@ -3,8 +3,7 @@ import { CommandBus } from '@nestjs/cqrs';
 import { IUserToken } from 'src/shared/auth';
 import { ILogger } from 'src/shared/logger';
 import { BullTransactionLoggingHelper } from '../../../shared/domain/value-objects';
-import { CreateTransactionCommand } from '../../application/commands';
-import { ITransaction } from '../../domain/entities';
+import { ProcessTransactionCreateCommand } from '../../application/commands';
 import { TransactionRepository } from '../repositories';
 
 /**
@@ -77,21 +76,30 @@ export class TransactionEventProcessor {
       logContext,
       `Processing transaction created event: transactionId '${transactionId}'`,
     );
-    try {
-      const entity = await this.commandBus.execute<
-        CreateTransactionCommand,
-        ITransaction
-      >(new CreateTransactionCommand(user, eventData.eventData));
 
-      // TODO: Add your actual transaction processing logic here
-      // This could include executing commands via CommandBus
-      return;
+    try {
+      // Simple auto-processing: immediately mark the transaction as completed
+      // This implements the "no real business logic" requirement
+      const processCommand = new ProcessTransactionCreateCommand(user, {
+        id: transactionId,
+        from:
+          ((eventData.eventData as Record<string, any>)?.from as string) ||
+          'unknown',
+        to:
+          ((eventData.eventData as Record<string, any>)?.to as string) ||
+          'unknown',
+        amount:
+          Number((eventData.eventData as Record<string, any>)?.amount) || 0,
+      });
+
+      await this.commandBus.execute(processCommand);
+
       this.logger.log(
         {
           ...logContext,
           phase: 'SUCCESS',
         },
-        `Successfully processed transaction created event: transactionId '${transactionId}'`,
+        `Successfully auto-processed transaction: transactionId '${transactionId}' marked as completed`,
       );
     } catch (error) {
       this.logger.error(

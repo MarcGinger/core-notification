@@ -10,8 +10,6 @@
 
 import { Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { handleCommandError } from '../../../../../shared';
-import { TransactionExceptionMessage } from '../../../domain';
 import { ITransaction } from '../../../domain/entities';
 import { ProcessTransactionCreateUseCase } from '../../usecases/process-create-transaction.usecase';
 import { ProcessTransactionCreateCommand } from './process-transaction-create.command';
@@ -35,11 +33,6 @@ export class ProcessTransactionCreateHandler
     command: ProcessTransactionCreateCommand,
   ): Promise<ITransaction> {
     const { user, props } = command;
-    try {
-      return await this.processTransactionCreateUseCase.execute(user, props);
-    } catch (error) {
-      handleCommandError(error, null, TransactionExceptionMessage.updateError);
-      throw error;
-    }
+    return await this.processTransactionCreateUseCase.execute(user, props);
   }
 }
