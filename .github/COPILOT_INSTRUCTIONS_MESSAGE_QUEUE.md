@@ -606,6 +606,744 @@ export class GenericMessageQueueModule {}
 
 ---
 
+## 🔗 **Integration with Domain Events**
+
+### Domain Event to Queue Mapping Pattern
+
+Our message queues integrate seamlessly with EventStoreDB domain events:
+
+```ts
+// ✅ Event Handler triggering async queue processing
+@EventHandler(PaymentCompletedV1Event)
+export class PaymentQueueTriggerHandler {
+  private readonly logger = new Logger(PaymentQueueTriggerHandler.name);
+
+  constructor(
+    private readonly notificationQueue: INotificationMessageQueue,
+    private readonly slackQueue: ISlackMessageQueue,
+    private readonly transactionQueue: ITransactionMessageQueue,
+  ) {}
+
+  async handle(event: PaymentCompletedV1Event, metadata: EventStoreMetaProps) {
+    this.logger.log({
+      operation: 'QUEUE_TRIGGER_FROM_DOMAIN_EVENT',
+      correlationId: metadata.correlationId,
+      eventType: event.constructor.name,
+      paymentId: event.paymentId,
+    });
+
+    // ✅ Trigger async email notification
+    await this.notificationQueue.enqueueEmail(
+      {
+        type: 'payment.completed',
+        userId: event.userId,
+        paymentId: event.paymentId,
+        amount: event.amountMinor,
+        currency: event.currency,
+      },
+      {
+        correlationId: metadata.correlationId,
+        source: 'domain.payment.completed',
+        timestamp: new Date(),
+        user: metadata.userId ? { id: metadata.userId } : undefined,
+        tenantId: metadata.tenantId,
+      },
+    );
+
+    // ✅ Trigger Slack alert for high-value payments
+    if (event.amountMinor > 100000) {
+      await this.slackQueue.sendAlert(
+        {
+          type: 'high_value_payment',
+          amount: event.amountMinor,
+          currency: event.currency,
+          paymentId: event.paymentId,
+          merchantName: event.merchantName,
+        },
+        {
+          correlationId: metadata.correlationId,
+          source: 'domain.payment.high_value',
+          timestamp: new Date(),
+          priority: PRIORITY_LEVELS.HIGH,
+        },
+      );
+    }
+
+    // ✅ Trigger settlement processing for completed payments
+    await this.transactionQueue.enqueueSettlement(
+      {
+        paymentId: event.paymentId,
+        amountMinor: event.amountMinor,
+        currency: event.currency,
+        settlementDate: event.settlementDate,
+      },
+      {
+        correlationId: metadata.correlationId,
+        source: 'domain.payment.settlement',
+        timestamp: new Date(),
+        delay: this.calculateSettlementDelay(event.settlementDate),
+      },
+    );
+  }
+
+  private calculateSettlementDelay(settlementDate: Date): number {
+    const now = new Date();
+    const delay = settlementDate.getTime() - now.getTime();
+    return Math.max(0, delay); // Don't allow negative delays
+  }
+}
+```
+
+### Queue Interface Contract Template
+
+```ts
+// ✅ Domain-specific queue interface
+export interface INotificationMessageQueue {
+  enqueueEmail(
+    data: EmailNotificationData,
+    metadata: StandardJobMetadata,
+    options?: QueueJobOptions,
+  ): Promise<QueueJob>;
+
+  enqueueSms(
+    data: SmsNotificationData,
+    metadata: StandardJobMetadata,
+    options?: QueueJobOptions,
+  ): Promise<QueueJob>;
+
+  enqueuePush(
+    data: PushNotificationData,
+    metadata: StandardJobMetadata,
+    options?: QueueJobOptions,
+  ): Promise<QueueJob>;
+}
+
+// ✅ Implementation using generic queue
+@Injectable()
+export class NotificationMessageQueueService
+  implements INotificationMessageQueue
+{
+  private readonly logger = new Logger(NotificationMessageQueueService.name);
+
+  constructor(
+    @Inject('NOTIFICATION_QUEUE')
+    private readonly queue: IGenericQueue<QueueJobData>,
+  ) {}
+
+  async enqueueEmail(
+    data: EmailNotificationData,
+    metadata: StandardJobMetadata,
+    options: QueueJobOptions = {},
+  ): Promise<QueueJob> {
+    return this.queue.add(
+      'email',
+      {
+        payload: data,
+        metadata: {
+          ...metadata,
+          source: metadata.source || 'notification.email',
+        },
+      },
+      {
+        ...options,
+        priority: options.priority || PRIORITY_LEVELS.NORMAL,
+      },
+    );
+  }
+}
+```
+
+---
+
+## 🔄 **Outbox Pattern Retry Alignment**
+
+### Consistent Backoff Strategy
+
+Align queue retry behavior with your Outbox pattern for operational consistency:
+
+```ts
+// ✅ Shared retry configuration matching Outbox pattern
+export const QUEUE_RETRY_CONFIG = {
+  attempts: 5, // Same as Outbox max attempts
+  backoff: {
+    type: 'exponential' as const,
+    delay: 2000, // Start at 2s like Outbox
+    maxDelay: 15 * 60 * 1000, // Cap at 15m like Outbox
+    jitter: true, // Add jitter like Outbox
+  },
+} as const;
+
+// ✅ BullMQ adapter configuration
+export class BullMQGenericQueueAdapter<T> implements IGenericQueue<T> {
+  constructor(
+    private readonly queue: Queue<T>,
+    private readonly config: QueueConfig,
+  ) {
+    // Configure default job options with Outbox-aligned retry
+    this.queue.setDefaultJobOptions({
+      attempts: QUEUE_RETRY_CONFIG.attempts,
+      backoff: QUEUE_RETRY_CONFIG.backoff,
+      removeOnComplete: 50, // Keep recent successes
+      removeOnFail: 20, // Keep recent failures for debugging
+    });
+  }
+
+  async add(
+    jobName: string,
+    data: T,
+    options: QueueJobOptions = {},
+  ): Promise<QueueJob> {
+    return this.queue.add(jobName, data, {
+      ...options,
+      // ✅ Override defaults if specified
+      attempts: options.attempts || QUEUE_RETRY_CONFIG.attempts,
+      delay: options.delay || 0,
+      priority: options.priority || PRIORITY_LEVELS.NORMAL,
+    });
+  }
+}
+```
+
+### Failure Categorization
+
+```ts
+// ✅ Consistent failure handling with Outbox pattern
+export enum QueueFailureType {
+  RETRYABLE = 'retryable', // Temporary issues (network, rate limits)
+  PERMANENT = 'permanent', // Business logic errors, invalid data
+  CIRCUIT_BREAKER = 'circuit_open', // Downstream service unavailable
+}
+
+export interface QueueFailureContext {
+  failureType: QueueFailureType;
+  originalError: Error;
+  attemptNumber: number;
+  nextRetryAt?: Date;
+  shouldDeadLetter: boolean;
+}
+
+// ✅ Worker error handling template
+@Processor('notification-email')
+export class EmailNotificationWorker {
+  @Process('email')
+  async processEmail(job: Job<QueueJobData<EmailNotificationData>>) {
+    try {
+      await this.emailService.send(job.data.payload);
+
+      this.logger.log({
+        operation: 'QUEUE_JOB_COMPLETED',
+        correlationId: job.data.metadata.correlationId,
+        jobId: job.id,
+        jobName: job.name,
+        duration: Date.now() - job.processedOn,
+      });
+    } catch (error) {
+      const failureContext = this.categorizeFailure(error, job.attemptsMade);
+
+      this.logger.error({
+        operation: 'QUEUE_JOB_FAILED',
+        correlationId: job.data.metadata.correlationId,
+        jobId: job.id,
+        jobName: job.name,
+        failureType: failureContext.failureType,
+        attemptNumber: failureContext.attemptNumber,
+        error: error.message,
+        shouldDeadLetter: failureContext.shouldDeadLetter,
+      });
+
+      if (failureContext.failureType === QueueFailureType.PERMANENT) {
+        // Don't retry permanent failures
+        throw new Error(`Permanent failure: ${error.message}`);
+      }
+
+      throw error; // Let BullMQ handle retryable failures
+    }
+  }
+
+  private categorizeFailure(
+    error: Error,
+    attemptNumber: number,
+  ): QueueFailureContext {
+    // ✅ Business logic errors - don't retry
+    if (
+      error instanceof InvalidEmailAddressError ||
+      error instanceof TemplateNotFoundError
+    ) {
+      return {
+        failureType: QueueFailureType.PERMANENT,
+        originalError: error,
+        attemptNumber,
+        shouldDeadLetter: true,
+      };
+    }
+
+    // ✅ Rate limiting - retry with backoff
+    if (error.message.includes('rate limit') || error.status === 429) {
+      return {
+        failureType: QueueFailureType.RETRYABLE,
+        originalError: error,
+        attemptNumber,
+        shouldDeadLetter: attemptNumber >= QUEUE_RETRY_CONFIG.attempts,
+      };
+    }
+
+    // ✅ Default to retryable
+    return {
+      failureType: QueueFailureType.RETRYABLE,
+      originalError: error,
+      attemptNumber,
+      shouldDeadLetter: attemptNumber >= QUEUE_RETRY_CONFIG.attempts,
+    };
+  }
+}
+```
+
+---
+
+## 💀 **Dead Letter Integration**
+
+### Operational Dead Letter Handling
+
+Connect dead letter processing with your operational procedures and Outbox pattern:
+
+```ts
+// ✅ Dead letter metrics and alerting
+export interface DeadLetterMetrics {
+  queueName: string;
+  jobName: string;
+  jobId: string;
+  failureReason: string;
+  correlationId: string;
+  tenantId?: string;
+  finalAttemptAt: Date;
+  totalAttempts: number;
+  firstFailureAt: Date;
+}
+
+// ✅ Dead letter service for operational monitoring
+@Injectable()
+export class QueueDeadLetterService {
+  private readonly logger = new Logger(QueueDeadLetterService.name);
+
+  constructor(
+    private readonly outbox: IIntegrationOutboxRepository,
+    private readonly metrics: IMetricsService,
+  ) {}
+
+  async handleDeadLetter(job: Job<QueueJobData>, error: Error): Promise<void> {
+    const deadLetterMetrics: DeadLetterMetrics = {
+      queueName: job.queue.name,
+      jobName: job.name,
+      jobId: job.id,
+      failureReason: error.message,
+      correlationId: job.data.metadata.correlationId,
+      tenantId: job.data.metadata.tenantId,
+      finalAttemptAt: new Date(),
+      totalAttempts: job.attemptsMade,
+      firstFailureAt: new Date(job.timestamp + (job.opts.delay || 0)),
+    };
+
+    // ✅ Structured logging for operational visibility
+    this.logger.error({
+      operation: 'QUEUE_JOB_DEAD_LETTER',
+      ...deadLetterMetrics,
+      payload: job.data.payload,
+    });
+
+    // ✅ Emit metrics for alerting
+    this.metrics.counter('queue.job.dead_letter.total', 1, {
+      queue_name: deadLetterMetrics.queueName,
+      job_name: deadLetterMetrics.jobName,
+      failure_reason: this.categorizeFailureReason(error),
+    });
+
+    // ✅ Send dead letter notification via Outbox for ops team
+    await this.outbox.enqueue({
+      integrationType: 'webhook:ops-alerts',
+      eventType: 'queue.job.dead_letter.v1',
+      payload: deadLetterMetrics,
+      metadata: {
+        correlationId: job.data.metadata.correlationId,
+        source: 'queue.dead_letter_handler',
+        occurredAt: new Date().toISOString(),
+        tenantId: job.data.metadata.tenantId,
+      },
+    });
+
+    // ✅ Store in dead letter table for manual recovery
+    await this.storeDeadLetterForRecovery(deadLetterMetrics, job.data);
+  }
+
+  private categorizeFailureReason(error: Error): string {
+    if (error.message.includes('timeout')) return 'timeout';
+    if (error.message.includes('rate limit')) return 'rate_limit';
+    if (error.message.includes('authentication')) return 'auth_failure';
+    if (error.message.includes('invalid')) return 'validation_error';
+    return 'unknown';
+  }
+
+  private async storeDeadLetterForRecovery(
+    metrics: DeadLetterMetrics,
+    jobData: QueueJobData,
+  ): Promise<void> {
+    // Store in database table for ops team manual recovery
+    // This enables reprocessing of dead letters after fixes
+  }
+}
+
+// ✅ Dead letter queue configuration
+@Processor('dead-letter-queue')
+export class DeadLetterQueueWorker {
+  constructor(private readonly deadLetterService: QueueDeadLetterService) {}
+
+  @OnGlobalQueueFailed()
+  async handleGlobalQueueFailed(jobId: string, err: Error) {
+    // BullMQ will move failed jobs here after max attempts
+    const job = await Job.fromId(this.queue, jobId);
+    if (job) {
+      await this.deadLetterService.handleDeadLetter(job, err);
+    }
+  }
+
+  @Process('manual-reprocess')
+  async reprocessDeadLetter(
+    job: Job<{ originalJobData: QueueJobData; reason: string }>,
+  ) {
+    // Manual reprocessing endpoint for ops team
+    const { originalJobData, reason } = job.data;
+
+    this.logger.log({
+      operation: 'DEAD_LETTER_MANUAL_REPROCESS',
+      correlationId: originalJobData.metadata.correlationId,
+      reason,
+      originalJobId: job.id,
+    });
+
+    // Re-enqueue to original queue with fresh attempt counter
+    // Implementation depends on specific queue routing logic
+  }
+}
+```
+
+---
+
+## 🧪 **Testing Integration with Domain Events**
+
+### Unit Testing Event Handler Queue Integration
+
+```ts
+// ✅ Unit test for event handler queue integration
+describe('PaymentQueueTriggerHandler', () => {
+  let handler: PaymentQueueTriggerHandler;
+  let mockNotificationQueue: jest.Mocked<INotificationMessageQueue>;
+  let mockSlackQueue: jest.Mocked<ISlackMessageQueue>;
+  let mockTransactionQueue: jest.Mocked<ITransactionMessageQueue>;
+
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        PaymentQueueTriggerHandler,
+        {
+          provide: 'INotificationMessageQueue',
+          useValue: {
+            enqueueEmail: jest.fn(),
+            enqueueSms: jest.fn(),
+          },
+        },
+        {
+          provide: 'ISlackMessageQueue',
+          useValue: {
+            sendAlert: jest.fn(),
+          },
+        },
+        {
+          provide: 'ITransactionMessageQueue',
+          useValue: {
+            enqueueSettlement: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    handler = module.get(PaymentQueueTriggerHandler);
+    mockNotificationQueue = module.get('INotificationMessageQueue');
+    mockSlackQueue = module.get('ISlackMessageQueue');
+    mockTransactionQueue = module.get('ITransactionMessageQueue');
+  });
+
+  describe('handle PaymentCompletedV1Event', () => {
+    it('should trigger notification queue on payment completion', async () => {
+      // Arrange
+      const event = new PaymentCompletedV1Event({
+        paymentId: 'pay_123',
+        userId: 'user_456',
+        amountMinor: 50000, // $500.00
+        currency: 'USD',
+        merchantName: 'Test Merchant',
+        settlementDate: new Date('2025-08-15'),
+      });
+
+      const metadata: EventStoreMetaProps = {
+        correlationId: 'test-correlation-123',
+        source: 'payment.domain',
+        occurredAt: '2025-08-12T10:30:00Z',
+        userId: 'user_456',
+        tenantId: 'tenant_789',
+      };
+
+      // Act
+      await handler.handle(event, metadata);
+
+      // Assert
+      expect(mockNotificationQueue.enqueueEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'payment.completed',
+          paymentId: 'pay_123',
+          userId: 'user_456',
+          amountMinor: 50000,
+          currency: 'USD',
+        }),
+        expect.objectContaining({
+          correlationId: 'test-correlation-123',
+          source: 'domain.payment.completed',
+          tenantId: 'tenant_789',
+        }),
+      );
+
+      expect(mockTransactionQueue.enqueueSettlement).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paymentId: 'pay_123',
+          amountMinor: 50000,
+          currency: 'USD',
+        }),
+        expect.objectContaining({
+          correlationId: 'test-correlation-123',
+          source: 'domain.payment.settlement',
+        }),
+      );
+    });
+
+    it('should trigger Slack alert for high-value payments', async () => {
+      // Arrange
+      const highValueEvent = new PaymentCompletedV1Event({
+        paymentId: 'pay_456',
+        userId: 'user_789',
+        amountMinor: 150000, // $1,500.00 - triggers alert
+        currency: 'USD',
+        merchantName: 'High Value Merchant',
+        settlementDate: new Date('2025-08-15'),
+      });
+
+      const metadata: EventStoreMetaProps = {
+        correlationId: 'high-value-correlation-456',
+        source: 'payment.domain',
+        occurredAt: '2025-08-12T10:30:00Z',
+      };
+
+      // Act
+      await handler.handle(highValueEvent, metadata);
+
+      // Assert
+      expect(mockSlackQueue.sendAlert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'high_value_payment',
+          amount: 150000,
+          currency: 'USD',
+          paymentId: 'pay_456',
+          merchantName: 'High Value Merchant',
+        }),
+        expect.objectContaining({
+          correlationId: 'high-value-correlation-456',
+          source: 'domain.payment.high_value',
+          priority: PRIORITY_LEVELS.HIGH,
+        }),
+      );
+    });
+
+    it('should NOT trigger Slack alert for normal-value payments', async () => {
+      // Arrange
+      const normalValueEvent = new PaymentCompletedV1Event({
+        paymentId: 'pay_789',
+        amountMinor: 50000, // $500.00 - below threshold
+        currency: 'USD',
+        merchantName: 'Normal Merchant',
+        settlementDate: new Date('2025-08-15'),
+      });
+
+      const metadata: EventStoreMetaProps = {
+        correlationId: 'normal-correlation-789',
+        source: 'payment.domain',
+        occurredAt: '2025-08-12T10:30:00Z',
+      };
+
+      // Act
+      await handler.handle(normalValueEvent, metadata);
+
+      // Assert
+      expect(mockSlackQueue.sendAlert).not.toHaveBeenCalled();
+    });
+  });
+});
+
+// ✅ Integration test with real queue processing
+describe('NotificationQueue Integration', () => {
+  let app: INestApplication;
+  let notificationQueue: INotificationMessageQueue;
+  let emailService: jest.Mocked<IEmailService>;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        // Use test configuration with in-memory Redis
+        GenericMessageQueueModule.forRootAsync({
+          useFactory: () => ({
+            connection: {
+              host: 'localhost',
+              port: 6380, // Test Redis instance
+              db: 15, // Test database
+            },
+            defaultJobOptions: QUEUE_RETRY_CONFIG,
+          }),
+        }),
+        NotificationModule,
+      ],
+    })
+      .overrideProvider('IEmailService')
+      .useValue({
+        send: jest.fn(),
+      })
+      .compile();
+
+    app = moduleRef.createNestApplication();
+    await app.init();
+
+    notificationQueue = app.get('INotificationMessageQueue');
+    emailService = app.get('IEmailService');
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('should process email notification job end-to-end', async () => {
+    // Arrange
+    const emailData: EmailNotificationData = {
+      type: 'payment.completed',
+      recipientEmail: 'user@example.com',
+      templateId: 'payment_completed_v1',
+      templateData: {
+        paymentId: 'pay_123',
+        amount: '$500.00',
+        merchantName: 'Test Merchant',
+      },
+    };
+
+    const metadata: StandardJobMetadata = {
+      correlationId: 'integration-test-123',
+      source: 'integration.test',
+      timestamp: new Date(),
+    };
+
+    // Act
+    const job = await notificationQueue.enqueueEmail(emailData, metadata);
+
+    // Wait for job processing (with timeout)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Assert
+    expect(job.id).toBeDefined();
+    expect(emailService.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'payment.completed',
+        recipientEmail: 'user@example.com',
+      }),
+    );
+  });
+
+  it('should handle job failure and retry correctly', async () => {
+    // Arrange
+    emailService.send.mockRejectedValueOnce(
+      new Error('Temporary service unavailable'),
+    );
+    emailService.send.mockResolvedValueOnce(undefined); // Success on retry
+
+    const emailData: EmailNotificationData = {
+      type: 'payment.completed',
+      recipientEmail: 'retry@example.com',
+      templateId: 'payment_completed_v1',
+      templateData: { paymentId: 'pay_retry' },
+    };
+
+    const metadata: StandardJobMetadata = {
+      correlationId: 'retry-test-456',
+      source: 'integration.test',
+      timestamp: new Date(),
+    };
+
+    // Act
+    await notificationQueue.enqueueEmail(emailData, metadata);
+
+    // Wait for initial failure and retry
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    // Assert
+    expect(emailService.send).toHaveBeenCalledTimes(2); // Initial + 1 retry
+  });
+});
+
+// ✅ E2E test with domain event flow
+describe('Payment Domain Event to Queue E2E', () => {
+  let app: INestApplication;
+  let eventStore: IEventStore;
+  let paymentAggregate: PaymentAggregate;
+
+  beforeAll(async () => {
+    // Setup test app with real components
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleRef.createNestApplication();
+    await app.init();
+
+    eventStore = app.get(EventStore);
+  });
+
+  it('should complete payment and trigger all expected queue jobs', async () => {
+    // Arrange
+    const paymentId = `pay_e2e_${Date.now()}`;
+    const correlationId = `e2e_test_${Date.now()}`;
+
+    paymentAggregate = PaymentAggregate.create({
+      paymentId,
+      userId: 'user_e2e',
+      amountMinor: 200000, // $2,000 - triggers Slack alert
+      currency: 'USD',
+      merchantId: 'merchant_e2e',
+    });
+
+    // Act - Complete payment (triggers domain event)
+    paymentAggregate.complete('txn_123', new Date('2025-08-15'));
+
+    await eventStore.saveEvents(
+      paymentId,
+      paymentAggregate.getUncommittedEvents(),
+      -1,
+      { correlationId, source: 'e2e.test' },
+    );
+
+    // Wait for async processing
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Assert - Verify all expected queue jobs were triggered
+    // This would require queue inspection utilities or test doubles
+    // Implementation depends on your specific testing strategy
+  });
+});
+```
+
+---
+
 ## 🧪 **Testing Strategy**
 
 ### Unit Testing Domain Services
