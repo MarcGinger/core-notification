@@ -275,4 +275,20 @@ export const TransactionExceptionMessage: Record<string, IException> = {
     statusCode: 400,
     domain: `true`,
   },
+  invalidAmount: {
+    message: `Amount cannot be negative`,
+    description: `The amount field must be zero or positive for Transaction`,
+    code: `INVALID_NEGATIVE_AMOUNT_VALUE`,
+    exception: `TransactionDomainException`,
+    statusCode: 400,
+    domain: `true`,
+  },
+  amountExceedsMaximum: {
+    message: `Amount cannot be greater than 1000`,
+    description: `The amount field must not exceed the maximum allowed value of 1000 for Transaction`,
+    code: `AMOUNT_EXCEEDS_MAXIMUM_VALUE`,
+    exception: `TransactionDomainException`,
+    statusCode: 400,
+    domain: `true`,
+  },
 };

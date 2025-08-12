@@ -12,7 +12,11 @@ export class Amount {
         TransactionExceptionMessage.invalidAmount,
       );
     }
-
+    if (value !== undefined && value > 1000) {
+      throw new TransactionDomainException(
+        TransactionExceptionMessage.amountExceedsMaximum,
+      );
+    }
     this.value = value;
   }
 

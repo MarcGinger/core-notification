@@ -9,8 +9,6 @@
  */
 
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { handleCommandError } from 'src/shared/application/commands';
-import { TransactionExceptionMessage } from '../../../domain/exceptions';
 import { QueueTransactionUseCase } from '../../usecases';
 import { QueueTransactionCommand } from './queue-transaction.command';
 
@@ -24,12 +22,6 @@ export class QueueTransactionHandler
 
   async execute(command: QueueTransactionCommand): Promise<void> {
     const { user, props } = command;
-
-    try {
-      await this.queueTransactionUseCase.execute(user, props);
-    } catch (error) {
-      handleCommandError(error, null, TransactionExceptionMessage.queueError);
-      throw error;
-    }
+    await this.queueTransactionUseCase.execute(user, props);
   }
 }
