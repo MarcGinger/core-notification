@@ -43,6 +43,7 @@ import {
   MakerUpdateRequest,
 } from '../../application/dtos';
 import { MakerApplicationService } from '../../application/services';
+import { PublishMakerEventUseCase } from '../../application/usecases/publish-maker-event.usecase';
 import { MakerPermissions } from '../../domain/permissions';
 
 @Controller({
@@ -53,7 +54,16 @@ import { MakerPermissions } from '../../domain/permissions';
 export class MakerController {
   constructor(
     private readonly makerApplicationService: MakerApplicationService,
+    private readonly publishMakerEventUseCase: PublishMakerEventUseCase,
   ) {}
+
+  @Post('publish')
+  async publishEvent(
+    @Body() body: { makerId: string; payload: Record<string, any> },
+  ) {
+    await this.publishMakerEventUseCase.execute(body.makerId, body.payload);
+    return { status: 'published', makerId: body.makerId };
+  }
 
   @Get()
   @SetMetadata('permissions', [MakerPermissions.Read])
