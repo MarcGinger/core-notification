@@ -9,20 +9,20 @@
  */
 
 import { Module } from '@nestjs/common';
-import { LoggerModule } from 'src/shared/logger';
 import { EventStoreSharedModule } from 'src/shared/infrastructure';
+import { LoggerModule } from 'src/shared/logger';
+import { MakerCommands } from './application/commands';
+import { MakerQuery } from './application/queries';
+import { MakerApplicationService } from './application/services';
+import { MakerUseCases } from './application/usecases';
 import { MakerExceptionMessage } from './domain/exceptions';
 import { MakerDomainService } from './domain/services';
-import { MakerQuery } from './application/queries';
-import { MakerCommands } from './application/commands';
-import { MakerUseCases } from './application/usecases';
-import { MakerApplicationService } from './application/services';
-import { MakerRepository } from './infrastructure/repositories';
 import { MakerController } from './infrastructure/controllers';
 import {
   MakerMemoryProjection,
   MakerProjectionManager,
 } from './infrastructure/projectors';
+import { MakerRepository } from './infrastructure/repositories';
 
 @Module({
   imports: [EventStoreSharedModule, LoggerModule],
@@ -31,7 +31,6 @@ import {
     MakerDomainService,
     MakerRepository,
     MakerApplicationService,
-
     ...MakerQuery,
     ...MakerCommands,
     ...MakerUseCases,
@@ -39,12 +38,17 @@ import {
       provide: 'MAKER_EXCEPTION_MESSAGES',
       useValue: MakerExceptionMessage,
     },
-
     MakerMemoryProjection,
     MakerProjectionManager,
     {
       provide: 'MakerMemoryProjection',
       useExisting: MakerMemoryProjection,
+    },
+    {
+      provide: 'IntegrationBus',
+      useClass:
+        require('../../shared/integration/adapters/inprocess-bus.adapter')
+          .InProcessBus,
     },
   ],
   exports: [
@@ -52,6 +56,7 @@ import {
     MakerMemoryProjection,
     MakerProjectionManager,
     'MakerMemoryProjection',
+    'IntegrationBus',
   ],
 })
 export class MakerModule {}
