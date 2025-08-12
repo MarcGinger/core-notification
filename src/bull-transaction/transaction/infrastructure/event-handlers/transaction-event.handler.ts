@@ -194,6 +194,29 @@ export class TransactionEventHandler {
   }
 
   /**
+   * Utility to recursively convert BigInt values to strings in an object
+   */
+  private sanitizeBigInt(obj: any): any {
+    if (typeof obj === 'bigint') {
+      return obj.toString();
+    }
+    if (Array.isArray(obj)) {
+      return obj.map((item: unknown) => this.sanitizeBigInt(item));
+    }
+    if (obj && typeof obj === 'object') {
+      return Object.fromEntries(
+        Object.entries(obj as Record<string, unknown>).map(
+          ([key, value]: [string, unknown]) => [
+            key,
+            this.sanitizeBigInt(value),
+          ],
+        ),
+      );
+    }
+    return obj;
+  }
+
+  /**
    * Routes transaction events to notification queue for further processing
    */
   private async routeToNotificationQueue(
@@ -207,10 +230,12 @@ export class TransactionEventHandler {
         routedBy: 'TransactionEventHandler',
         routedAt: new Date().toISOString(),
       };
+      // Sanitize BigInt values before queueing
+      const sanitizedJobData = this.sanitizeBigInt(jobData);
 
       await this.notificationQueue.add(
         'process-transaction-notification',
-        jobData,
+        sanitizedJobData,
         {
           priority: this.getJobPriority(
             (eventData.payload?.eventType as string) || '',
