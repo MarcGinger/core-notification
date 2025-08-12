@@ -22,6 +22,7 @@ import { OverviewRedisDocumentation } from './overview-redis.doc';
 import { OverviewEventStoreDBDocumentation } from './overview-eventstore.doc';
 import { OverviewKafkaDocumentation } from './overview-kafka.doc';
 import { SystemOperationsDocumentation } from './system-operations.doc';
+import { CoreMakerDocumentation } from 'src/core-maker/module.doc';
 import { CoreSlackWorkerDocumentation } from 'src/core-slack-worker/module.doc';
 import { CoreTemplateManagerDocumentation } from 'src/core-template-manager/module.doc';
 import { BullTransactionDocumentation } from 'src/bull-transaction/module.doc';
@@ -42,6 +43,7 @@ export function setupMultipleSwaggerDocs(
       terminology: '',
       standards: '',
       gettingStarted: '',
+      coreMaker: '',
       coreSlackWorker: '',
       coreTemplateManager: '',
       bullTransaction: '',
@@ -61,6 +63,7 @@ export function setupMultipleSwaggerDocs(
   OverviewEventStoreDBDocumentation.setup(app, port);
   OverviewKafkaDocumentation.setup(app, port);
 
+  CoreMakerDocumentation.setup(app, port);
   CoreSlackWorkerDocumentation.setup(app, port);
   CoreTemplateManagerDocumentation.setup(app, port);
   BullTransactionDocumentation.setup(app, port);
@@ -74,6 +77,7 @@ export function setupMultipleSwaggerDocs(
     terminology: TerminologyDocumentation.getEndpoint(port),
     gettingStarted: GettingStartedDocumentation.getEndpoint(port),
 
+    coreMaker: CoreMakerDocumentation.getEndpoint(port),
     coreSlackWorker: CoreSlackWorkerDocumentation.getEndpoint(port),
     coreTemplateManager: CoreTemplateManagerDocumentation.getEndpoint(port),
     bullTransaction: BullTransactionDocumentation.getEndpoint(port),

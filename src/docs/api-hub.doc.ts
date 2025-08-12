@@ -48,6 +48,14 @@ export class ApiDocumentationHub {
   
   ---
   
+## Bounded Context - Core
+
+  | Documentation | Description | Link |
+  |---------------|-------------|------|
+  | **Core object maker** | This is the core slack messaging service | [📖 View Docs](/api/docs/core-maker) |
+
+  ---
+
 ## Bounded Context - Slack
 
   | Documentation | Description | Link |

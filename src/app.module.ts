@@ -20,6 +20,7 @@ import {
 import { LoggerModule } from './shared/logger';
 import { KeycloakConfigService } from './shared/infrastructure';
 import { HealthModule } from './health/health.module';
+import { CoreMakerModule } from './core-maker/module';
 import { CoreSlackWorkerModule } from './core-slack-worker/module';
 import { CoreTemplateManagerModule } from './core-template-manager/module';
 import { BullTransactionModule } from './bull-transaction/module';
@@ -33,6 +34,7 @@ import { BullTransactionModule } from './bull-transaction/module';
     LoggerModule,
     HealthModule,
 
+    CoreMakerModule,
     CoreSlackWorkerModule,
     CoreTemplateManagerModule,
     BullTransactionModule,

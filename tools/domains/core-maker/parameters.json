@@ -1,0 +1,65 @@
+{
+  "service": {
+    "name": "core object maker",
+    "version": "1",
+    "module": "core-maker",
+    "hasRedis": false,
+    "boundedContext": "core",
+    "hasSql": false,
+    "hasEventStream": true
+  },
+  "tables": {
+    "maker": {
+      "docs": {
+        "summary": "This is the Maker module"
+      },
+      "permissions": {
+        "enabled": true,
+        "prefix": ""
+      },
+      "apis": {},
+      "store": {
+        "read": "eventstream",
+        "write": "eventstream",
+        "list": "eventstream"
+      },
+      "cancel": {
+        "create": false,
+        "update": false,
+        "delete": true,
+        "batch": true,
+        "get": true
+      },
+      "complete": [],
+      "redis": {
+        "category": "lookups:core.maker.v1",
+        "ttl": 3600,
+        "hash": true,
+        "prefix": "core-maker",
+        "aggregate": "maker",
+        "version": "v1"
+      },
+      "eventstream": {
+        "stream": "core.maker.v1",
+        "create-type": "create.v1",
+        "update-type": "update.v1",
+        "boundedContext": "core-maker",
+        "aggregate": "maker",
+        "version": "v1"
+      },
+      "cols": {
+        "id": {},
+        "from": {},
+        "to": {},
+        "description": {},
+        "status": {},
+        "scheduled_at": {},
+        "correlation_id": {}
+      }
+    }
+  },
+  "excluded": [],
+  "docs": {
+    "summary": "This is the core slack messaging service"
+  }
+}

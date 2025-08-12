@@ -32,6 +32,7 @@ export interface SwaggerDocumentationUrls {
   standards: string;
   terminology: string;
   gettingStarted: string;
+  coreMaker: string;
   coreSlackWorker: string;
   coreTemplateManager: string;
   bullTransaction: string;
